@@ -78,7 +78,7 @@ export class AppController {
 
       // Handle the string response from process method
       return {
-        response: result,
+        response: JSON.stringify(result),
         metadata: {
           timestamp: new Date().toISOString(),
           model: 'claude-2',

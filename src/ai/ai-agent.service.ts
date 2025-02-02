@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable } from '@nestjs/common';
 import { AnthropicChatService } from './anthropic-chat.service';
 import { z } from 'zod';
@@ -20,32 +22,53 @@ interface Tool<TParams = any, TResult = any> {
   execute: (params: TParams) => Promise<TResult>;
 }
 
+// Schema for tool execution details
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const AgentActionSchema = z.object({
   tool: z.string(),
   params: z.record(z.any()),
 });
 
+// Schema for the complete agent interaction
 const AgentResponseSchema = z
   .object({
-    thought: z.string(),
-    action: AgentActionSchema.optional(),
-    finalAnswer: z.string(),
+    // The AI's reasoning process
+    thought: z.string().describe('AI reasoning about the action to take'),
+
+    // Tool action (when tool is being requested)
+    action: z
+      .object({
+        tool: z.string(),
+        params: z.record(z.any()),
+      })
+      .optional(),
+
+    // The final response to the user (required when no action, null when action present)
+    finalAnswer: z.string().nullable(),
   })
   .refine(
     (data) => {
-      // If there's an action, finalAnswer should be null/undefined
-      // If no action, finalAnswer must be a non-empty string
       return data.action
-        ? !data.finalAnswer
-        : typeof data.finalAnswer === 'string' && data.finalAnswer.length > 0;
+        ? data.finalAnswer === null
+        : typeof data.finalAnswer === 'string';
     },
     {
       message:
-        'Response must have either an action OR a non-empty finalAnswer, but not both',
+        'Response must have either an action OR a finalAnswer, but not both',
     },
   );
-
+// Types derived from the schemas
+type AgentAction = z.infer<typeof AgentActionSchema>;
 type AgentResponse = z.infer<typeof AgentResponseSchema>;
+
+// Interface for tracking the complete interaction
+interface AgentInteraction {
+  thought: string;
+  action?: AgentAction & {
+    result?: unknown;
+  };
+  finalAnswer: string | null;
+}
 
 @Injectable()
 export class AIAgentService {
@@ -102,7 +125,7 @@ export class AIAgentService {
             "parameterName": "parameterValue"
           }
         },
-        "finalAnswer": null
+        "finalAnswer": null 
       }
 
       After getting the tool result, your next response should be:
@@ -153,33 +176,45 @@ export class AIAgentService {
         throw new Error('No content found in response');
       }
 
-      // Parse the JSON string from the content
-      const parsed = JSON.parse(content) as unknown;
-      const data = AgentResponseSchema.parse(parsed);
-      console.log('Parsed agent response:', data);
-
-      return data;
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        throw new Error('Failed to parse JSON from response content');
+      try {
+        // Try to parse as structured response
+        const parsed = JSON.parse(content);
+        return AgentResponseSchema.parse({
+          thought: parsed.thought,
+          action: parsed.action,
+          finalAnswer: parsed.action ? null : parsed.finalAnswer,
+        });
+      } catch (jsonError) {
+        console.error('JSON parsing error:', jsonError);
+        // Handle direct responses
+        return {
+          thought: 'Direct response',
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+          finalAnswer: content.trim(),
+        };
       }
+    } catch (error) {
+      console.error('Response parsing error:', error);
       throw new Error(`Failed to parse agent response: ${error}`);
     }
   }
 
-  async process(query: string, maxIterations = 5): Promise<string> {
+  async process(query: string, maxIterations = 5): Promise<AgentInteraction> {
     let iterations = 0;
     let currentQuery = query;
+    const interactions: AgentInteraction[] = [];
 
     while (iterations < maxIterations) {
       const prompt = this.generatePrompt(currentQuery);
       const responseStr = await this.anthropicService.sendMessage(prompt);
       const response = this.parseResponse(responseStr);
 
-      // If we have a final answer, return it
-      if (!response.action) {
-        return response.finalAnswer;
-      }
+      // Create interaction record
+      const interaction: AgentInteraction = {
+        thought: response.thought,
+        action: response.action,
+        finalAnswer: response.finalAnswer,
+      };
 
       if (response.action) {
         const tool = this.tools.get(response.action.tool);
@@ -188,17 +223,29 @@ export class AIAgentService {
         }
 
         // Execute tool with proper typing
+        // Execute tool with proper typing
         const result: unknown = await tool.execute(response.action.params);
         const validatedResult: unknown = tool.resultSchema.parse(result);
 
+        // Store the result in the interaction
+        interaction.action = {
+          ...response.action,
+          result: validatedResult,
+        };
         const resultStr =
           typeof validatedResult === 'string'
             ? validatedResult
             : JSON.stringify(validatedResult);
 
-        currentQuery = `Previous action: ${response.action.tool}\nResult: ${resultStr}\nOriginal query: ${query}`;
+        // Update query with tool result
+        currentQuery = `Previous thought: ${response.thought}\nTool used: ${response.action.tool}\nResult: ${resultStr}\nOriginal query: ${query}`;
       }
 
+      interactions.push(interaction);
+      // If we have a final answer with no action, return the final interaction
+      if (!response.action && response.finalAnswer) {
+        return interaction;
+      }
       iterations++;
     }
 
