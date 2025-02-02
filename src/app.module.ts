@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { ConfigModule } from '@nestjs/config';
-import { AnthropicChatService } from './openai/chat.service';
-import { AgentService } from './openai/ai-agent.service';
+import { AnthropicChatService } from './ai/anthropic-chat.service';
+import { AIAgentService } from './ai/ai-agent.service';
 
 @Module({
   imports: [
@@ -11,6 +11,6 @@ import { AgentService } from './openai/ai-agent.service';
     }),
   ],
   controllers: [AppController],
-  providers: [AgentService, AnthropicChatService],
+  providers: [AIAgentService, AnthropicChatService],
 })
 export class AppModule { }
