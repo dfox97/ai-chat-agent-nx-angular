@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import { Injectable } from '@nestjs/common';
-import { AnthropicChatService } from './anthropic-chat.service';
 import { z } from 'zod';
+import { generateAgentPrompt } from './agent-prompt';
+import { AnthropicChatService } from './anthropic-chat.service';
 
 // Generic type for tool parameters and return values
 export interface ToolDefinition<TParams = any, TResult = any> {
@@ -97,6 +99,7 @@ export class AIAgentService {
     return Array.from(this.tools.values());
   }
 
+  // when we make a chat service we should split this into using a system promp with a context.
   private generatePrompt(userQuery: string): string {
     const toolDescriptions = Array.from(this.tools.entries())
       .map(([name, tool]) => {
@@ -106,61 +109,7 @@ export class AIAgentService {
       })
       .join('\n\n');
 
-    return `
-      You are an AI assistant with access to the following tools:
-
-      ${toolDescriptions}
-
-      When a human asks a question that requires using a tool:
-      1. First respond with your thought process and the tool action
-      2. After getting the tool result, provide a final answer incorporating the result
-
-      Response format when using a tool:
-      {
-        "thought": "your reasoning about what to do",
-        "action": {
-          "tool": "tool_name",
-          "params": {
-            // parameters should be passed as an object matching the tool's schema
-            "parameterName": "parameterValue"
-          }
-        },
-        "finalAnswer": null 
-      }
-
-      After getting the tool result, your next response should be:
-      {
-        "thought": "considering the tool result...",
-        "finalAnswer": "complete response incorporating the tool result"
-      }
-
-      If you can answer directly without a tool:
-      {
-        "thought": "your reasoning",
-        "finalAnswer": "your direct response"
-      }
-
-      Example flow:
-      Human: "Translate 'Hello friend' to pirate speak"
-      Assistant: {
-        "thought": "I'll use the pirate_speak tool to translate this text",
-        "action": {
-          "tool": "pirate_speak",
-          "params": {
-            "text": "Hello friend"
-          }
-        },
-        "finalAnswer": null
-      }
-      
-      [After getting tool result]
-      Assistant: {
-        "thought": "I received the pirate translation",
-        "finalAnswer": "Here's your text in pirate speak: 'Ahoy matey, arrr!'"
-      }
-
-      Human query: ${userQuery}
-    `.trim();
+    return generateAgentPrompt(toolDescriptions, userQuery);
   }
 
   private parseResponse(response: string): AgentResponse {
@@ -222,7 +171,6 @@ export class AIAgentService {
           throw new Error(`Tool ${response.action.tool} not found`);
         }
 
-        // Execute tool with proper typing
         // Execute tool with proper typing
         const result: unknown = await tool.execute(response.action.params);
         const validatedResult: unknown = tool.resultSchema.parse(result);
