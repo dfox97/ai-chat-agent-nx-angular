@@ -8,12 +8,14 @@ import {
 import { AIAgentService } from './ai/ai-agent.service';
 import { PirateTool } from './ai/tools/pirate_tool';
 import { WikiTool } from './ai/tools/wiki_tool';
+import { PdfTool } from './ai/tools/pdf_tool';
 
 @Controller()
 export class AppController {
   constructor(private readonly aiAgent: AIAgentService) {
     this.aiAgent.registerTool(WikiTool);
     this.aiAgent.registerTool(PirateTool);
+    this.aiAgent.registerTool(PdfTool);
   }
 
   // curl -X POST http://localhost:3000/chat \
