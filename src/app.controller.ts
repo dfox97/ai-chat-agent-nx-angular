@@ -4,6 +4,7 @@ import {
   Body,
   HttpException,
   HttpStatus,
+  Get,
 } from '@nestjs/common';
 import { AIAgentService } from './ai/ai-agent.service';
 import { PirateTool } from './ai/tools/pirate_tool';
@@ -42,5 +43,17 @@ export class AppController {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  @Get('chat/history')
+  getChatHistory() {
+    const history = this.aiAgent.getConversationHistory();
+    return {
+      history,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        messageCount: history.length,
+      },
+    };
   }
 }

@@ -4,7 +4,7 @@
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { generateAgentPrompt } from './agent-prompt';
-import { AnthropicChatService } from './anthropic-chat.service';
+import { AnthropicChatService, Message } from './anthropic-chat.service';
 
 // Generic type for tool parameters and return values
 export interface ToolDefinition<TParams = any, TResult = any> {
@@ -99,6 +99,10 @@ export class AIAgentService {
     return Array.from(this.tools.values());
   }
 
+  getConversationHistory(): Message[] {
+    return this.anthropicService.getConversationHistory();
+  }
+
   // when we make a chat service we should split this into using a system promp with a context.
   private generatePrompt(userQuery: string): string {
     const toolDescriptions = Array.from(this.tools.entries())
@@ -114,17 +118,14 @@ export class AIAgentService {
 
   private parseResponse(response: string): AgentResponse {
     try {
-      // Parse the Anthropic API response
+      // JSON parsing error: SyntaxError: Bad control character in string literal in JSON at position 762 (line 3 column 423)
+      //     at JSON.parse (<anonymous>)
+
       const anthropicResponse = JSON.parse(response);
       console.log('Anthropic response:', anthropicResponse);
 
       // Extract the actual content from the message
       const content = anthropicResponse?.content?.[0]?.text;
-
-      if (!content) {
-        throw new Error('No content found in response');
-      }
-
       try {
         // Try to parse as structured response
         const parsed = JSON.parse(content);
