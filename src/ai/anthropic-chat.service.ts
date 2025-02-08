@@ -2,6 +2,33 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 
+export interface LLMStructuredResponse {
+  thought: string;
+  action?: {
+    tool: string;
+    params: Record<string, any>;
+  };
+  finalAnswer: string | null;
+}
+
+export interface LLMResponse {
+  id: string;
+  type: 'message';
+  role: 'assistant';
+  model: string;
+  content: Array<{
+    type: 'text';
+    text: string;
+  }>;
+  stop_reason: string | null;
+  stop_sequence: string | null;
+  usage: {
+    input_tokens: number;
+    output_tokens?: number;
+    cache_creation_input_tokens?: number;
+    cache_read_input_tokens?: number;
+  };
+}
 export interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -36,13 +63,19 @@ export class AnthropicChatService {
         content: message,
       });
 
-      const response = await this.anthropic.messages.create({
+      const response = (await this.anthropic.messages.create({
         max_tokens: 1024,
         messages: this.conversationHistory,
-        model: 'claude-3-sonnet-20240229',
-      });
+        model: 'claude-3-haiku-20240307',
+      })) as LLMResponse;
 
-      console.log('Anthropic response:', response);
+      console.log('Anthropic response: send message', response.content[0].text);
+      const textContent = response.content[0].text;
+      const structuredResponse: LLMStructuredResponse = JSON.parse(textContent);
+      console.log(
+        'Anthropic response: structured response',
+        structuredResponse,
+      );
 
       // Add assistant's response to history
       this.conversationHistory.push({

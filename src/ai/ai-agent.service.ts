@@ -122,7 +122,7 @@ export class AIAgentService {
       //     at JSON.parse (<anonymous>)
 
       const anthropicResponse = JSON.parse(response);
-      console.log('Anthropic response:', anthropicResponse);
+      console.log('Anthropic response PARSD?:', anthropicResponse);
 
       // Extract the actual content from the message
       const content = anthropicResponse?.content?.[0]?.text;
@@ -156,14 +156,15 @@ export class AIAgentService {
 
     while (iterations < maxIterations) {
       const prompt = this.generatePrompt(currentQuery);
-      const responseStr = await this.anthropicService.sendMessage(prompt);
-      const response = this.parseResponse(responseStr);
+      const response = await this.anthropicService.sendMessage(prompt);
+      //We could remove this parse i think?
+      //const response = this.parseResponse(responseStr);
 
       // Create interaction record
       const interaction: AgentInteraction = {
         thought: response.thought,
-        action: response.action,
-        finalAnswer: response.finalAnswer,
+        action: response?.action,
+        finalAnswer: response?.finalAnswer,
       };
 
       if (response.action) {
@@ -173,7 +174,7 @@ export class AIAgentService {
         }
 
         // Execute tool with proper typing
-        const result: unknown = await tool.execute(response.action.params);
+        const result = await tool.execute(response.action.params);
         const validatedResult: unknown = tool.resultSchema.parse(result);
 
         // Store the result in the interaction
