@@ -2,15 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 
-export interface LLMStructuredResponse {
-  thought: string;
-  action?: {
-    tool: string;
-    params: Record<string, any>;
-  };
-  finalAnswer: string | null;
-}
-
 export interface LLMResponse {
   id: string;
   type: 'message';
@@ -63,30 +54,25 @@ export class AnthropicChatService {
         content: message,
       });
 
+      // Get response from Anthropic
       const response = (await this.anthropic.messages.create({
         max_tokens: 1024,
         messages: this.conversationHistory,
-        model: 'claude-3-haiku-20240307',
-      })) as LLMResponse;
+        model: 'claude-3-5-haiku-latest',
+      })) as LLMResponse; // Fixes same annying type complaints
 
-      console.log('Anthropic response: send message', response.content[0].text);
-      const textContent = response.content[0].text;
-      const structuredResponse: LLMStructuredResponse = JSON.parse(textContent);
-      console.log(
-        'Anthropic response: structured response',
-        structuredResponse,
-      );
+      // Extract the actual text response
+      const assistantMessage = response.content[0].text.trim(); // Big object with response final answer can be large
+      console.log('Anthropic response text:', assistantMessage);
 
       // Add assistant's response to history
       this.conversationHistory.push({
         role: 'assistant',
-
-        content: JSON.stringify(response),
+        content: assistantMessage,
       });
 
-      // Clean and parse the response text
-
-      return JSON.stringify(response);
+      // Return the actual text response
+      return assistantMessage;
     } catch (error) {
       console.error('Anthropic API error:', error);
       throw new Error(

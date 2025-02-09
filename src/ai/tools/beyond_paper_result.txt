@@ -1,0 +1,111 @@
+content: [
+    {
+      type: 'text',
+      text: `{"thought": "I'll analyze the paper's approach to prompt optimization and provide recommendations for implementing Content-Format Integrated Prompt Optimization (CFPO) in a Retrieval-Augmented Generation (RAG) application",\n` +
+        '"action": {\n' +
+        '    "tool": "research_pdf_reader",\n' +
+        '    "params": {\n' +
+        '        "filename": "Beyond-Prompt-Content-Enhancing-LLM-Performance.pdf"\n' +
+        '    }\n' +
+        '},\n' +
+        '"finalAnswer": "Implementation Strategy for CFPO in RAG Applications:\n' +
+        '\n' +
+        '1. Prompt Structure Decomposition\n' +
+        '- Break down your RAG prompt into key components:\n' +
+        '  a) Task Instruction\n' +
+        '  b) Task Details\n' +
+        '  c) Output Format\n' +
+        '  d) Few-shot Examples\n' +
+        '  e) Query Format\n' +
+        '  f) Prompt Renderer\n' +
+        '\n' +
+        '2. Iterative Optimization Process\n' +
+        '- Develop a two-stage optimization framework:\n' +
+        '  a) Content Optimization\n' +
+        '     - Use case-diagnosis to analyze prompt performance\n' +
+        '     - Generate multiple prompt variations\n' +
+        "     - Evaluate each variant's performance on your specific RAG task\n" +
+        '  \n' +
+        '  b) Format Optimization\n' +
+        '     - Experiment with different rendering styles\n' +
+        '     - Try various query formats (e.g., Question-Answer, Instruction-Response)\n' +
+        '     - Use a scoring mechanism to track format effectiveness\n' +
+        '\n' +
+        '3. Implementation Techniques\n' +
+        '- Monte Carlo Sampling: Generate semantically equivalent prompt variations\n' +
+        '- LLM-assisted Optimization: Use GPT-4 or similar models to:\n' +
+        '  - Diagnose prompt weaknesses\n' +
+        '  - Suggest content and format improvements\n' +
+        '  - Generate alternative prompt structures\n' +
+        '\n' +
+        '4. Practical RAG Optimization Steps\n' +
+        '- Initial Prompt Design:\n' +
+        '  ```python\n' +
+        '  def create_rag_prompt(context, query):\n' +
+        '      instruction = "Analyze the following context and answer the query precisely"\n' +
+        '      task_details = "Provide a comprehensive answer using only the given context"\n' +
+        '      output_format = "Structured response with key points"\n' +
+        '      few_shot_examples = [\n' +
+        '          {"context": "...", "query": "...", "answer": "..."}\n' +
+        '      ]\n' +
+        '      \n' +
+        '      # Implement format variations and content mutations\n' +
+        '      optimized_prompt = optimize_prompt(\n' +
+        '          instruction, task_details, output_format, \n' +
+        '          few_shot_examples, context, query\n' +
+        '      )\n' +
+        '      \n' +
+        '      return optimized_prompt\n' +
+        '  ```\n' +
+        '\n' +
+        '5. Continuous Improvement Cycle\n' +
+        '- Implement a feedback loop:\n' +
+        '  - Track prompt performance metrics\n' +
+        '  - Periodically re-optimize prompts\n' +
+        '  - Adapt to changing query patterns\n' +
+        '\n' +
+        '6. Specific RAG Enhancements\n' +
+        '- Context Relevance: Use CFPO to improve context selection\n' +
+        '- Answer Consistency: Optimize prompts to maintain consistent response styles\n' +
+        '- Domain Adaptation: Create specialized prompt templates for different knowledge domains\n' +
+        '\n' +
+        'Key Considerations:\n' +
+        '- Not all optimization strategies will work universally\n' +
+        '- Experiment and validate each approach for your specific use case\n' +
+        '- Monitor performance metrics like relevance, coherence, and factual accuracy\n' +
+        '\n' +
+        'Experimental Framework:\n' +
+        '```python\n' +
+        'class RAGPromptOptimizer:\n' +
+        '    def __init__(self, base_model, retrieval_model):\n' +
+        '        self.base_model = base_model\n' +
+        '        self.retrieval_model = retrieval_model\n' +
+        '        self.prompt_variations = []\n' +
+        '        self.performance_scores = {}\n' +
+        '    \n' +
+        '    def generate_prompt_variations(self, base_prompt):\n' +
+        '        # Implement CFPO-inspired variation generation\n' +
+        '        pass\n' +
+        '    \n' +
+        '    def evaluate_prompt_performance(self, prompt, test_queries):\n' +
+        '        # Measure prompt effectiveness across test queries\n' +
+        '        pass\n' +
+        '    \n' +
+        '    def select_best_prompt(self):\n' +
+        '        # Choose prompt with highest performance score\n' +
+        '        pass\n' +
+        '```\n' +
+        '\n' +
+        'Limitations to Be Aware Of:\n' +
+        '- Computational overhead of continuous optimization\n' +
+        '- Potential over-fitting to specific query types\n' +
+        '- Need for domain-specific tuning\n' +
+        '\n' +
+        'Recommended Tools/Libraries:\n' +
+        '- LangChain for prompt engineering\n' +
+        '- HuggingFace Transformers\n' +
+        '- OpenAI API for advanced prompt optimization\n' +
+        '\n' +
+        'By adopting this CFPO-inspired approach, you can create a more adaptive and performant RAG system that continuously improves its prompt engineering strategy."}'
+    }
+  ],

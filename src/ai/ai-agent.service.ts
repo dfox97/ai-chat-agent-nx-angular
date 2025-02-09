@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { generateAgentPrompt } from './agent-prompt';
@@ -25,51 +22,31 @@ interface Tool<TParams = any, TResult = any> {
 }
 
 // Schema for tool execution details
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const AgentActionSchema = z.object({
   tool: z.string(),
-  params: z.record(z.any()),
+  params: z
+    .record(z.any())
+    .describe("Tool parameters matching the tool's schema"),
 });
 
 // Schema for the complete agent interaction
-const AgentResponseSchema = z
-  .object({
-    // The AI's reasoning process
-    thought: z.string().describe('AI reasoning about the action to take'),
+const AgentResponseSchema = z.object({
+  thought: z.string().describe('Reasoning about the response or tool usage'),
 
-    // Tool action (when tool is being requested)
-    action: z
-      .object({
-        tool: z.string(),
-        params: z.record(z.any()),
-      })
-      .optional(),
+  // Optional tool action if needed
+  action: AgentActionSchema.nullable().describe(
+    'Tool to use, or null if no tool needed',
+  ),
 
-    // The final response to the user (required when no action, null when action present)
-    finalAnswer: z.string().nullable(),
-  })
-  .refine(
-    (data) => {
-      return data.action
-        ? data.finalAnswer === null
-        : typeof data.finalAnswer === 'string';
-    },
-    {
-      message:
-        'Response must have either an action OR a finalAnswer, but not both',
-    },
-  );
-// Types derived from the schemas
+  finalAnswer: z.string().describe('Complete response to the user'),
+});
+// Types derived from schemas
 type AgentAction = z.infer<typeof AgentActionSchema>;
 type AgentResponse = z.infer<typeof AgentResponseSchema>;
 
-// Interface for tracking the complete interaction
-interface AgentInteraction {
-  thought: string;
-  action?: AgentAction & {
-    result?: unknown;
-  };
-  finalAnswer: string | null;
+// Extended action type that includes the tool execution result
+interface AgentInteraction extends AgentResponse {
+  action: (AgentAction & { result?: unknown }) | null;
 }
 
 @Injectable()
@@ -118,84 +95,71 @@ export class AIAgentService {
 
   private parseResponse(response: string): AgentResponse {
     try {
-      // JSON parsing error: SyntaxError: Bad control character in string literal in JSON at position 762 (line 3 column 423)
-      //     at JSON.parse (<anonymous>)
+      // Try to parse the response as JSON
+      const parsed: AgentResponse = JSON.parse(response);
 
-      const anthropicResponse = JSON.parse(response);
-      console.log('Anthropic response PARSD?:', anthropicResponse);
-
-      // Extract the actual content from the message
-      const content = anthropicResponse?.content?.[0]?.text;
-      try {
-        // Try to parse as structured response
-        const parsed = JSON.parse(content);
-        return AgentResponseSchema.parse({
-          thought: parsed.thought,
-          action: parsed.action,
-          finalAnswer: parsed.action ? null : parsed.finalAnswer,
-        });
-      } catch (jsonError) {
-        console.error('JSON parsing error:', jsonError);
-        // Handle direct responses
-        return {
-          thought: 'Direct response',
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-          finalAnswer: content.trim(),
-        };
-      }
+      // Validate against our schema
+      return AgentResponseSchema.parse({
+        thought: parsed.thought,
+        action: parsed?.action ?? null,
+        finalAnswer: parsed.finalAnswer.trim(),
+      });
     } catch (error) {
       console.error('Response parsing error:', error);
-      throw new Error(`Failed to parse agent response: ${error}`);
+      // If parsing fails, treat it as a direct response
+      return {
+        thought: 'Direct response',
+        action: null,
+        finalAnswer: response.trim(),
+      };
     }
   }
 
   async process(query: string, maxIterations = 5): Promise<AgentInteraction> {
     let iterations = 0;
     let currentQuery = query;
-    const interactions: AgentInteraction[] = [];
 
     while (iterations < maxIterations) {
       const prompt = this.generatePrompt(currentQuery);
-      const response = await this.anthropicService.sendMessage(prompt);
-      //We could remove this parse i think?
-      //const response = this.parseResponse(responseStr);
+      const responseStr = await this.anthropicService.sendMessage(prompt);
+      const response = this.parseResponse(responseStr);
 
-      // Create interaction record
-      const interaction: AgentInteraction = {
-        thought: response.thought,
-        action: response?.action,
-        finalAnswer: response?.finalAnswer,
-      };
+      // If there's no action needed, return the final answer
+      if (!response.action) {
+        return response as AgentInteraction;
+      }
 
-      if (response.action) {
-        const tool = this.tools.get(response.action.tool);
-        if (!tool) {
-          throw new Error(`Tool ${response.action.tool} not found`);
-        }
+      // If there is an action, execute it
+      const tool = this.tools.get(response.action.tool);
+      if (!tool) {
+        throw new Error(`Tool ${response.action.tool} not found`);
+      }
 
-        // Execute tool with proper typing
-        const result = await tool.execute(response.action.params);
-        const validatedResult: unknown = tool.resultSchema.parse(result);
+      // Execute tool with proper typing
+      const result = await tool.execute(response.action.params);
+      const validatedResult: unknown = tool.resultSchema.parse(result);
 
-        // Store the result in the interaction
-        interaction.action = {
+      // Store the result in the response
+      const responseWithResult: AgentInteraction = {
+        ...response,
+        action: {
           ...response.action,
           result: validatedResult,
-        };
-        const resultStr =
-          typeof validatedResult === 'string'
-            ? validatedResult
-            : JSON.stringify(validatedResult);
+        },
+      };
 
-        // Update query with tool result
-        currentQuery = `Previous thought: ${response.thought}\nTool used: ${response.action.tool}\nResult: ${resultStr}\nOriginal query: ${query}`;
+      // If this was the last action needed, return the response
+      if (response.finalAnswer && response.finalAnswer !== '') {
+        return responseWithResult;
       }
 
-      interactions.push(interaction);
-      // If we have a final answer with no action, return the final interaction
-      if (!response.action && response.finalAnswer) {
-        return interaction;
-      }
+      // Otherwise, update query with tool result for next iteration
+      const resultStr =
+        typeof validatedResult === 'string'
+          ? validatedResult
+          : JSON.stringify(validatedResult);
+
+      currentQuery = `Previous thought: ${response.thought}\nTool used: ${response.action.tool}\nResult: ${resultStr}\nOriginal query: ${query}`;
       iterations++;
     }
 
