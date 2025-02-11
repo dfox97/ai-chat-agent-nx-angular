@@ -1,7 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { generateAgentPrompt } from './agent-prompt';
-import { AnthropicChatService, Message } from './anthropic-chat.service';
+import { LLMFactoryService } from './llms/llm-factory.service';
+import {
+  LLMService,
+  LLMProvider,
+  LLMConfig,
+  Message,
+} from './llms/types/types';
 
 // Generic type for tool parameters and return values
 export interface ToolDefinition<TParams = any, TResult = any> {
@@ -52,8 +58,15 @@ interface AgentInteraction extends AgentResponse {
 @Injectable()
 export class AIAgentService {
   private tools: Map<string, Tool<unknown, unknown>> = new Map();
+  private llmService: LLMService;
 
-  constructor(private anthropicService: AnthropicChatService) { }
+  constructor(
+    private llmFactory: LLMFactoryService,
+    provider: LLMProvider = LLMProvider.ANTHROPIC,
+    config?: LLMConfig,
+  ) {
+    this.llmService = this.llmFactory.createLLMService(provider, config);
+  }
 
   registerTool<TParams, TResult>(
     toolDefinition: ToolDefinition<TParams, TResult>,
@@ -77,7 +90,7 @@ export class AIAgentService {
   }
 
   getConversationHistory(): Message[] {
-    return this.anthropicService.getConversationHistory();
+    return this.llmService.getConversationHistory();
   }
 
   // when we make a chat service we should split this into using a system promp with a context.
@@ -96,6 +109,7 @@ export class AIAgentService {
   private parseResponse(response: string): AgentResponse {
     try {
       // Try to parse the response as JSON
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const parsed: AgentResponse = JSON.parse(response);
 
       // Validate against our schema
@@ -121,7 +135,7 @@ export class AIAgentService {
 
     while (iterations < maxIterations) {
       const prompt = this.generatePrompt(currentQuery);
-      const responseStr = await this.anthropicService.sendMessage(prompt);
+      const responseStr = await this.llmService.sendMessage(prompt);
       const response = this.parseResponse(responseStr);
 
       // If there's no action needed, return the final answer

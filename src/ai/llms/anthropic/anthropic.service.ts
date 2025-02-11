@@ -1,6 +1,7 @@
+import Anthropic from '@anthropic-ai/sdk';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Anthropic from '@anthropic-ai/sdk';
+import { Message } from '../types/types';
 
 export interface LLMResponse {
   id: string;
@@ -19,10 +20,6 @@ export interface LLMResponse {
     cache_creation_input_tokens?: number;
     cache_read_input_tokens?: number;
   };
-}
-export interface Message {
-  role: 'user' | 'assistant';
-  content: string;
 }
 
 @Injectable()
