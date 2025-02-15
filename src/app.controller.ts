@@ -7,7 +7,13 @@ import {
   Get,
 } from '@nestjs/common';
 import { AIAgentService } from './ai/ai-agent.service';
-import { PdfTool, PirateTool, ResearchPdfTool, WikiTool } from './ai/tools';
+import {
+  PdfTool,
+  PirateTool,
+  ResearchPdfTool,
+  SearchTool,
+  WikiTool,
+} from './ai/tools';
 
 @Controller()
 export class AppController {
@@ -16,6 +22,7 @@ export class AppController {
     this.aiAgent.registerTool(PirateTool);
     this.aiAgent.registerTool(PdfTool);
     this.aiAgent.registerTool(ResearchPdfTool);
+    this.aiAgent.registerTool(SearchTool);
   }
 
   // curl -X POST http://localhost:3000/chat \

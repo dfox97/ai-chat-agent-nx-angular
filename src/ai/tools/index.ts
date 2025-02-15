@@ -1,6 +1,7 @@
 import { PdfTool } from './pdf_tool';
 import { PirateTool } from './pirate_tool';
-import { WikiTool } from './wiki_tool';
 import { ResearchPdfTool } from './research_pdf_tool';
+import { SearchTool } from './web-search_tool';
+import { WikiTool } from './wiki_tool';
 
-export { PirateTool, WikiTool, PdfTool, ResearchPdfTool };
+export { PdfTool, PirateTool, ResearchPdfTool, SearchTool, WikiTool };
