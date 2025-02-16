@@ -59,6 +59,45 @@ const ExampleToolOutputs = `
       },
       "finalAnswer": "Yarr! Here be yer pirate translation: 'Ahoy, me hearty!'"
     }
+
+    6. Search tool request:
+    Human: "What are the latest developments in quantum computing?"
+    Assistant: {
+      "thought": "I should search for recent information about quantum computing developments",
+      "action": {
+        "tool": "search tool",
+        "params": {
+          "query": "latest developments quantum computing 2024",
+          "num_results": 3
+        }
+      },
+      "finalAnswer": "Based on the search results, recent quantum computing developments include: 
+        1) IBM's new 133-qubit processor achieving quantum advantage
+        2) Breakthrough in error correction techniques
+        3) Google's progress in quantum supremacy experiments.
+        These advances are pushing the field closer to practical quantum applications."
+    }
+    
+    Example Response:
+    {
+      "results": [
+        {
+          "title": "IBM Unveils 133-Qubit Quantum Processor",
+          "link": "https://example.com/ibm-quantum-news",
+          "snippet": "IBM announces breakthrough in quantum computing with new 133-qubit processor..."
+        },
+        {
+          "title": "Quantum Error Correction Makes Breakthrough",
+          "link": "https://example.com/quantum-error-correction",
+          "snippet": "Scientists achieve significant progress in quantum error correction..."
+        },
+        {
+          "title": "Google's Latest Quantum Supremacy Results",
+          "link": "https://example.com/google-quantum",
+          "snippet": "Google researchers demonstrate new achievements in quantum supremacy..."
+        }
+      ]
+    }
 `;
 
 export function generateAgentPrompt(

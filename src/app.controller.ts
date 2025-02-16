@@ -14,10 +14,14 @@ import {
   SearchTool,
   WikiTool,
 } from './ai/tools';
+import { MessageService } from './entity/message.service';
 
 @Controller()
 export class AppController {
-  constructor(private readonly aiAgent: AIAgentService) {
+  constructor(
+    private readonly aiAgent: AIAgentService,
+    private readonly messageService: MessageService,
+  ) {
     this.aiAgent.registerTool(WikiTool);
     this.aiAgent.registerTool(PirateTool);
     this.aiAgent.registerTool(PdfTool);
@@ -33,6 +37,17 @@ export class AppController {
     try {
       const result = await this.aiAgent.process(body.message);
 
+      const userMessage = await this.messageService.createMessage(
+        'user',
+        body.message,
+        '1',
+      );
+
+      const assistantMessage = await this.messageService.createMessage(
+        'assistant',
+        typeof result === 'string' ? result : JSON.stringify(result),
+        userMessage.conversationId,
+      );
       // Handle the string response from process method
       return {
         response: JSON.stringify(result),
@@ -40,6 +55,7 @@ export class AppController {
           timestamp: new Date().toISOString(),
           model: 'claude-2',
           query: body.message,
+          conversationId: userMessage.conversationId,
         },
       };
     } catch (error) {
