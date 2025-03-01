@@ -1,5 +1,6 @@
 export interface LLMService {
   sendMessage(message: string): Promise<string>;
+  streamMessages(message: string): AsyncGenerator<string>;
   clearConversation(): void;
   getConversationHistory(): Message[];
 }

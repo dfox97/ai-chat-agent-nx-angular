@@ -5,6 +5,8 @@ import {
   HttpException,
   HttpStatus,
   Get,
+  Sse,
+  Query,
 } from '@nestjs/common';
 import { AIAgentService } from './ai/ai-agent.service';
 import {
@@ -15,6 +17,7 @@ import {
   WikiTool,
 } from './ai/tools';
 import { MessageService } from './entity/message.service';
+import { Observable } from 'rxjs';
 
 @Controller()
 export class AppController {
@@ -65,6 +68,63 @@ export class AppController {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  @Sse('stream')
+  streamChat(@Query('message') message: string): Observable<any> {
+    return new Observable(async (subscriber) => {
+      await (async () => {
+        const userMessage = await this.messageService.createMessage(
+          'user',
+          message,
+          '1',
+        );
+        let fullResponse = '';
+
+        // Get message stream (Assuming `streamProcess` returns an AsyncGenerator)
+        const messageStream = this.aiAgent.streamProcess(message);
+
+        // Process the streaming response
+        for await (const chunk of messageStream) {
+          console.log('Received chunk:', chunk);
+          fullResponse += chunk;
+
+          subscriber.next({
+            data: {
+              content: chunk,
+              metadata: {
+                timestamp: new Date().toISOString(),
+                model: 'claude-3-haiku',
+                conversationId: userMessage.conversationId,
+                isComplete: false,
+              },
+            },
+          });
+        }
+
+        // Save the complete assistant message
+        await this.messageService.createMessage(
+          'assistant',
+          fullResponse,
+          userMessage.conversationId,
+        );
+
+        // Signal completion
+        subscriber.next({
+          data: {
+            content: '',
+            metadata: {
+              timestamp: new Date().toISOString(),
+              model: 'claude-3-haiku',
+              conversationId: userMessage.conversationId,
+              isComplete: true,
+            },
+          },
+        });
+
+        subscriber.complete();
+      })();
+    });
   }
 
   @Get('chat/history')

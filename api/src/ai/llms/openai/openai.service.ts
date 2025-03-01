@@ -31,6 +31,10 @@ export class OpenAIChatService implements LLMService {
     return [...this.conversationHistory];
   }
 
+  async *streamMessages(message: string): AsyncGenerator<string> {
+    return null;
+  }
+
   async sendMessage(message: string): Promise<string> {
     try {
       this.conversationHistory.push({

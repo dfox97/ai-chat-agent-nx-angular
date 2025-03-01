@@ -40,7 +40,52 @@ export class AnthropicChatService {
   public getConversationHistory(): Message[] {
     return [...this.conversationHistory];
   }
+
   // Should add streaming here.
+  async *streamMessages(message: string): AsyncGenerator<string> {
+    try {
+      // Add user message to history
+      this.conversationHistory.push({ role: 'user', content: message });
+
+      // Ensure history doesn't grow too large
+      const maxHistory = 10;
+      if (this.conversationHistory.length > maxHistory) {
+        this.conversationHistory = this.conversationHistory.slice(-maxHistory);
+      }
+
+      // Get stream from Anthropic
+      const stream = this.anthropic.messages.stream({
+        messages: this.conversationHistory,
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 1024,
+      });
+
+      let fullResponse = '';
+
+      // Process the stream
+      for await (const chunk of stream) {
+        if (
+          chunk.type === 'content_block_delta' &&
+          chunk.delta?.type === 'text_delta'
+        ) {
+          const textChunk = chunk.delta.text ?? '';
+          fullResponse += textChunk;
+          yield textChunk; // Yield only valid text
+        }
+      }
+
+      // Add assistant's full response to history
+      this.conversationHistory.push({
+        role: 'assistant',
+        content: fullResponse,
+      });
+    } catch (error) {
+      console.error('Anthropic API error:', error);
+      throw new Error(
+        `Error communicating with Anthropic: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
   // Add TypeORM and redis for chat history
 
   async sendMessage(message: string): Promise<string> {

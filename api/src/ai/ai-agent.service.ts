@@ -129,6 +129,10 @@ export class AIAgentService {
     }
   }
 
+  async streamProcess(query: string): Promise<AsyncGenerator<string>> {
+    return this.llmService.streamMessages(query);
+  }
+
   async process(query: string, maxIterations = 5): Promise<AgentInteraction> {
     let iterations = 0;
     let currentQuery = query;
