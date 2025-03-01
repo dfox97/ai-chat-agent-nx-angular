@@ -49,7 +49,12 @@
       "e2eTestRunner": "none",
       "linter": "eslint",
       "style": "scss",
-      "unitTestRunner": "jest"
+      "unitTestRunner": "jest",
+      "standalone": true
+    },
+    "@nx/angular:component": {
+      "style": "scss",
+      "standalone": true
     }
   },
   "defaultProject": "copilot"
