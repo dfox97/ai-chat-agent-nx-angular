@@ -1,12 +1,12 @@
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { NxWelcomeComponent } from './nx-welcome.component';
+import { ChatSidebarComponent } from './chat-sidebar/chat-sidebar.component';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
-  imports: [NxWelcomeComponent, RouterModule],
+  imports: [ChatSidebarComponent, RouterModule],
   standalone: true,
 })
 export class AppComponent {

@@ -15,7 +15,7 @@ interface Conversation {
 })
 export class ChatSidebarComponent {
 
-  conversationSelected = output<Conversation>();
+  //conversationSelected = output<Conversation>();
 
   activeConversationId: string | null = null;
 
@@ -47,7 +47,7 @@ export class ChatSidebarComponent {
 
   selectConversation(conversation: Conversation) {
     this.activeConversationId = conversation.id;
-    this.conversationSelected.emit(conversation);
+    // this.conversationSelected.emit(conversation);
   }
 
   editConversation(conversation: Conversation, event: Event) {

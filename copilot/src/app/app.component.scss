@@ -1,0 +1,15 @@
+:host {
+  display: block;
+  height: 100vh;
+}
+
+.app-container {
+  display: flex;
+  height: 100%;
+}
+
+main {
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
