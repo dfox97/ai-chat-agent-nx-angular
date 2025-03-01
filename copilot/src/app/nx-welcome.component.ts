@@ -865,5 +865,6 @@ nx g &#64;nx/angular:component ui/src/lib/button</pre>
   `,
   styles: [],
   encapsulation: ViewEncapsulation.None,
+  standalone: true,
 })
-export class NxWelcomeComponent {}
+export class NxWelcomeComponent { }
