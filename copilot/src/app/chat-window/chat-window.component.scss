@@ -1,0 +1,149 @@
+.chat-window {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #343541;
+  color: #ffffff;
+  margin-left: 260px; // Account for sidebar width
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  scroll-behavior: smooth;
+}
+
+.welcome-container {
+  max-width: 48rem;
+  margin: 0 auto;
+  text-align: center;
+  padding: 2rem;
+
+  h1 {
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+    background: linear-gradient(90deg, #00ff87, #60efff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .welcome-message {
+    font-size: 1.25rem;
+    margin-bottom: 2rem;
+
+    p {
+      margin: 0.5rem 0;
+    }
+  }
+
+  .example-prompts {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin-top: 2rem;
+
+    p {
+      margin-bottom: 1rem;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+
+      li {
+        margin: 0.75rem 0;
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: background-color 0.2s;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.1);
+        }
+      }
+    }
+  }
+}
+
+.message {
+  max-width: 48rem;
+  margin: 1.5rem auto;
+
+  .message-content {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .message-avatar {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.25rem;
+    background: rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    i {
+      font-size: 1.25rem;
+    }
+  }
+
+  .message-text {
+    flex: 1;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+
+  .message-timestamp {
+    font-size: 0.75rem;
+    color: #8e8ea0;
+    margin-top: 0.5rem;
+    margin-left: 3rem;
+  }
+
+  &.user-message {
+    .message-avatar {
+      background: #10a37f;
+    }
+  }
+
+  &.assistant-message {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1.5rem 0;
+    margin: 1rem -2rem;
+
+    .message-content {
+      max-width: 48rem;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    .message-timestamp {
+      max-width: 48rem;
+      margin-left: calc(3rem + 2rem);
+      padding: 0 2rem;
+    }
+
+    .message-avatar {
+      background: #19c37d;
+    }
+  }
+}
+
+// Scrollbar styling
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background-color: #565869;
+  border-radius: 3px;
+}
