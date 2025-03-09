@@ -39,6 +39,5 @@
     }
   </div>
 
-  <app-chat-input (sendMessage)="handleNewMessage($event)"></app-chat-input>
+  <app-chat-input [(sendMessage)]="messageInputQuery"></app-chat-input>
 </div>
-<p>chat-window works!</p>

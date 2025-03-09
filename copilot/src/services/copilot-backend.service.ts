@@ -21,10 +21,11 @@ export interface ChatResponse {
   role: 'assistant';
   timestamp: Date;
 }
+
 @Injectable({
   providedIn: 'root'
 })
-export class CopilotService {
+export class CopilotBackendService {
   private readonly apiUrl = `${environment.apiUrl}/chat`;
 
   constructor(private http: HttpClient) { }

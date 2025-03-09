@@ -1,4 +1,4 @@
-import { Component, signal, computed, output } from '@angular/core';
+import { Component, signal, computed, output, model } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
@@ -10,7 +10,7 @@ import { CommonModule } from '@angular/common';
   styleUrl: './chat-input.component.scss',
 })
 export class ChatInputComponent {
-  sendMessage = output<string>();
+  sendMessage = model<string>();
 
   userInput = signal('');
   isComposing = signal(false);
@@ -29,7 +29,7 @@ export class ChatInputComponent {
   submit() {
     const trimmedInput = this.userInput().trim();
     if (trimmedInput) {
-      this.sendMessage.emit(trimmedInput);
+      this.sendMessage.set(trimmedInput);
       this.userInput.set('');
       // Reset textarea height after submission
       this.adjustTextareaHeight(document.querySelector('textarea'));
