@@ -38,6 +38,8 @@ export class AppController {
   @Post('chat')
   async chat(@Body() body: { message: string }) {
     try {
+      console.log('Received message:', body.message);
+
       const result = await this.aiAgent.process(body.message);
 
       const userMessage = await this.messageService.createMessage(
@@ -56,7 +58,7 @@ export class AppController {
         response: JSON.stringify(result),
         metadata: {
           timestamp: new Date().toISOString(),
-          model: 'claude-2',
+          model: 'claude-3-haiku',
           query: body.message,
           conversationId: userMessage.conversationId,
         },
@@ -72,57 +74,73 @@ export class AppController {
 
   @Sse('stream')
   streamChat(@Query('message') message: string): Observable<any> {
-    return new Observable(async (subscriber) => {
-      await (async () => {
-        const userMessage = await this.messageService.createMessage(
-          'user',
-          message,
-          '1',
-        );
-        let fullResponse = '';
+    return new Observable((subscriber) => {
+      void (async () => {
+        try {
+          // Create user message and get conversation ID
+          const userMessage = await this.messageService.createMessage(
+            'user',
+            message,
+            '1',
+          );
+          let fullResponse = '';
 
-        // Get message stream (Assuming `streamProcess` returns an AsyncGenerator)
-        const messageStream = this.aiAgent.streamProcess(message);
+          // Get message stream
+          const messageStream = await this.aiAgent.streamProcess(message);
 
-        // Process the streaming response
-        for await (const chunk of messageStream) {
-          console.log('Received chunk:', chunk);
-          fullResponse += chunk;
+          // Process the streaming response
+          for await (const chunk of messageStream) {
+            console.log('Received chunk:', chunk);
+            fullResponse += chunk;
 
+            // Send chunk to client
+            subscriber.next({
+              data: JSON.stringify({
+                content: chunk,
+                metadata: {
+                  timestamp: new Date().toISOString(),
+                  model: 'claude-3-haiku',
+                  conversationId: userMessage.conversationId,
+                  isComplete: false,
+                },
+              }),
+            });
+          }
+
+          // Save the complete assistant message
+          await this.messageService.createMessage(
+            'assistant',
+            fullResponse,
+            userMessage.conversationId,
+          );
+
+          // Signal completion
           subscriber.next({
-            data: {
-              content: chunk,
+            data: JSON.stringify({
+              content: '',
               metadata: {
                 timestamp: new Date().toISOString(),
                 model: 'claude-3-haiku',
                 conversationId: userMessage.conversationId,
-                isComplete: false,
+                isComplete: true,
               },
-            },
+            }),
           });
+
+          subscriber.complete();
+        } catch (error) {
+          console.error('Error in stream processing:', error);
+          subscriber.next({
+            data: JSON.stringify({
+              error: 'An error occurred during streaming',
+              metadata: {
+                timestamp: new Date().toISOString(),
+                isComplete: true,
+              },
+            }),
+          });
+          subscriber.complete();
         }
-
-        // Save the complete assistant message
-        await this.messageService.createMessage(
-          'assistant',
-          fullResponse,
-          userMessage.conversationId,
-        );
-
-        // Signal completion
-        subscriber.next({
-          data: {
-            content: '',
-            metadata: {
-              timestamp: new Date().toISOString(),
-              model: 'claude-3-haiku',
-              conversationId: userMessage.conversationId,
-              isComplete: true,
-            },
-          },
-        });
-
-        subscriber.complete();
       })();
     });
   }

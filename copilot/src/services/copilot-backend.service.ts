@@ -1,6 +1,6 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Observable, map, catchError, throwError } from "rxjs";
+import { Observable, map, catchError, throwError, of } from "rxjs";
 import { environment } from "src/environment";
 
 export interface ChatMessage {
@@ -16,10 +16,15 @@ export interface ChatRequest {
 }
 
 export interface ChatResponse {
-  id: string;
-  content: string;
-  role: 'assistant';
-  timestamp: Date;
+  response: string;
+  metadata: ChatMetadata;
+}
+
+interface ChatMetadata {
+  timestamp: string;
+  model: string;
+  query: string;
+  conversationId: string;
 }
 
 @Injectable({
@@ -33,40 +38,53 @@ export class CopilotBackendService {
   /**
    * Send a message to the Copilot API
    * @param message The user's message
-   * @param conversationId Optional conversation ID for context
    */
-  sendMessage(message: string, conversationId?: string): Observable<ChatResponse> {
-    const request: ChatRequest = {
-      message,
-      conversationId
+  sendMessage(message: string): Observable<ChatResponse> {
+    console.log('Sending message to API:', message);
+    console.log('API URL:', this.apiUrl);
+
+    // Create a simple test message object
+    const payload = { message };
+    console.log('Request payload:', payload);
+
+    // Add explicit headers
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
     };
 
-    return this.http.post<ChatResponse>(this.apiUrl, request).pipe(
-      map(response => ({
-        ...response,
-        timestamp: new Date(response.timestamp) // Convert string to Date
-      })),
+    return this.http.post<ChatResponse>(this.apiUrl, payload, { headers }).pipe(
+      map(response => {
+        console.log('API Response received:', response);
+        return response;
+      }),
       catchError(error => {
         console.error('Error calling Copilot API:', error);
+        console.error('Error details:', {
+          status: error.status,
+          statusText: error.statusText,
+          message: error.message,
+          error: error.error
+        });
         return throwError(() => new Error('Failed to get response from Copilot'));
       })
     );
   }
 
-  /**
-   * Get conversation history
-   * @param conversationId The conversation ID
-   */
-  getConversationHistory(conversationId: string): Observable<ChatResponse[]> {
-    return this.http.get<ChatResponse[]>(`${this.apiUrl}/history/${conversationId}`).pipe(
-      map(responses => responses.map(response => ({
-        ...response,
-        timestamp: new Date(response.timestamp)
-      }))),
-      catchError(error => {
-        console.error('Error fetching conversation history:', error);
-        return throwError(() => new Error('Failed to fetch conversation history'));
-      })
-    );
-  }
+//   /**
+//    * Get conversation history
+//    * @param conversationId The conversation ID
+//    */
+//   getConversationHistory(conversationId: string): Observable<ChatResponse[]> {
+//     return this.http.get<ChatResponse[]>(`${this.apiUrl}/history/${conversationId}`).pipe(
+//       map(responses => responses.map(response => ({
+//         ...response,
+//         timestamp: new Date(response.timestamp)
+//       }))),
+//       catchError(error => {
+//         console.error('Error fetching conversation history:', error);
+//         return throwError(() => new Error('Failed to fetch conversation history'));
+//       })
+//     );
+//   }
 }

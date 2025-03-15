@@ -12,19 +12,12 @@
       #messageInput
     ></textarea>
     
-    @if (canSubmit()) {
-      <button 
-        class="send-button"
-        (click)="submit()">
-        <i class="fas fa-paper-plane"></i>
-      </button>
-    } @else {
-      <button 
-        class="send-button"
-        disabled>
-        <i class="fas fa-paper-plane"></i>
-      </button>
-    }
+    <button 
+      class="send-button"
+      [disabled]="!canSubmit()"
+      (click)="submit()">
+      <i class="fas fa-paper-plane"></i>
+    </button>
   </div>
   
   <div class="input-footer">

@@ -18,7 +18,7 @@
       </div>
     }
 
-    @for (message of messages; track message.id) {
+    @for (message of messages; track message) {
       <div class="message" [class.user-message]="message.role === 'user'" [class.assistant-message]="message.role === 'assistant'">
         <div class="message-content">
           <div class="message-avatar">
@@ -39,5 +39,5 @@
     }
   </div>
 
-  <app-chat-input [(sendMessage)]="messageInputQuery"></app-chat-input>
+  <app-chat-input (messageSent)="handleNewMessage($event)"></app-chat-input>
 </div>
