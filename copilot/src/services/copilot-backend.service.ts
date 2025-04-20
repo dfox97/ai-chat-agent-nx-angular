@@ -27,6 +27,19 @@ interface ChatMetadata {
   conversationId: string;
 }
 
+// Interface for the data structure received via SSE
+export interface StreamedChatResponse {
+  content?: string; // Content chunk (optional, might be empty on completion signal)
+  error?: string; // Error message (optional)
+  metadata: {
+    timestamp: string;
+    model?: string; // Optional, might not be in every chunk
+    conversationId: string;
+    isComplete: boolean; // Flag to indicate the end of the stream
+  };
+}
+
+
 @Injectable({
   providedIn: 'root'
 })
@@ -69,6 +82,63 @@ export class CopilotBackendService {
         return throwError(() => new Error('Failed to get response from Copilot'));
       })
     );
+  }
+
+  /**
+   * Connect to the streaming endpoint and receive messages.
+   * @param message The user's message to send.
+   * @returns An Observable that emits parsed message chunks from the SSE stream.
+   */
+  streamMessages(message: string): Observable<StreamedChatResponse> {
+    // Construct the URL with the message as a query parameter
+    const url = `${environment.apiUrl}/stream?message=${encodeURIComponent(message)}`;
+    console.log('Connecting to SSE stream:', url);
+
+    return new Observable<StreamedChatResponse>((observer) => {
+      // Create an EventSource instance
+      const eventSource = new EventSource(url);
+
+      // Handle incoming messages
+      eventSource.onmessage = (event) => {
+        // console.log('SSE message received:', event.data);
+        try {
+          const parsedData: StreamedChatResponse = JSON.parse(event.data);
+          observer.next(parsedData);
+
+          // Check if the stream is complete
+          if (parsedData.metadata?.isComplete) {
+            console.log('SSE stream complete.');
+            observer.complete();
+            eventSource.close(); // Close the connection
+          }
+        } catch (error) {
+          console.error('Error parsing SSE message:', error);
+          observer.error(new Error('Failed to parse message from stream'));
+
+          eventSource.close(); // Close connection on parse error
+        }
+      };
+
+      // Handle errors
+      eventSource.onerror = (error) => {
+        console.error('SSE error:', error);
+        // Don't close the stream immediately on typical EventSource errors,
+        // as it might try to reconnect. However, signal an error to the subscriber.
+        // If it's a persistent error, the EventSource might close itself.
+        // We might need more sophisticated error handling depending on the specific errors.
+        observer.error(new Error('Stream connection error'));
+        // Consider closing based on error type or after retries fail
+        eventSource.close(); // Close on error for now
+      };
+
+      // Return a teardown function to close the EventSource when the Observable is unsubscribed
+      return () => {
+        if (eventSource.readyState !== EventSource.CLOSED) {
+          console.log('Closing SSE stream due to unsubscription.');
+          eventSource.close();
+        }
+      };
+    });
   }
 
 //   /**

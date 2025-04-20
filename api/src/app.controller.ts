@@ -38,8 +38,6 @@ export class AppController {
   @Post('chat')
   async chat(@Body() body: { message: string }) {
     try {
-      console.log('Received message:', body.message);
-
       const result = await this.aiAgent.process(body.message);
 
       const userMessage = await this.messageService.createMessage(
@@ -73,76 +71,80 @@ export class AppController {
   }
 
   @Sse('stream')
-  streamChat(@Query('message') message: string): Observable<any> {
-    return new Observable((subscriber) => {
-      void (async () => {
-        try {
-          // Create user message and get conversation ID
-          const userMessage = await this.messageService.createMessage(
-            'user',
-            message,
-            '1',
-          );
-          let fullResponse = '';
+  async *streamChat(
+    @Query('message') message: string,
+  ): AsyncGenerator<MessageEvent> {
+    let userMessage;
+    let fullResponse = '';
+    // TODO: Determine actual conversation ID (e.g., from request, session, or create new)
+    const conversationId = '1'; // Placeholder
 
-          // Get message stream
-          const messageStream = await this.aiAgent.streamProcess(message);
+    try {
+      // 1. Save User Message
+      userMessage = await this.messageService.createMessage(
+        'user',
+        message,
+        conversationId,
+      );
 
-          // Process the streaming response
-          for await (const chunk of messageStream) {
-            console.log('Received chunk:', chunk);
-            fullResponse += chunk;
+      // 2. Get message stream from AI Agent
+      const messageStream = this.aiAgent.streamProcess(message);
 
-            // Send chunk to client
-            subscriber.next({
-              data: JSON.stringify({
-                content: chunk,
-                metadata: {
-                  timestamp: new Date().toISOString(),
-                  model: 'claude-3-haiku',
-                  conversationId: userMessage.conversationId,
-                  isComplete: false,
-                },
-              }),
-            });
-          }
+      // 3. Process the stream and yield chunks
+      for await (const chunk of messageStream) {
+        // console.log('Received chunk:', chunk); // Optional: server-side logging
+        fullResponse += chunk;
 
-          // Save the complete assistant message
-          await this.messageService.createMessage(
-            'assistant',
-            fullResponse,
-            userMessage.conversationId,
-          );
+        // Yield chunk to client as MessageEvent
+        yield {
+          data: JSON.stringify({
+            content: chunk,
+            metadata: {
+              timestamp: new Date().toISOString(),
+              model: 'claude-3-haiku', // TODO: Get model from config/agent
+              conversationId: userMessage.conversationId,
+              isComplete: false,
+            },
+          }),
+        } as MessageEvent;
+      }
 
-          // Signal completion
-          subscriber.next({
-            data: JSON.stringify({
-              content: '',
-              metadata: {
-                timestamp: new Date().toISOString(),
-                model: 'claude-3-haiku',
-                conversationId: userMessage.conversationId,
-                isComplete: true,
-              },
-            }),
-          });
+      // 4. Save the complete assistant message
+      if (fullResponse && userMessage) {
+        await this.messageService.createMessage(
+          'assistant',
+          fullResponse,
+          userMessage.conversationId,
+        );
+      }
 
-          subscriber.complete();
-        } catch (error) {
-          console.error('Error in stream processing:', error);
-          subscriber.next({
-            data: JSON.stringify({
-              error: 'An error occurred during streaming',
-              metadata: {
-                timestamp: new Date().toISOString(),
-                isComplete: true,
-              },
-            }),
-          });
-          subscriber.complete();
-        }
-      })();
-    });
+      // 5. Signal completion
+      yield {
+        data: JSON.stringify({
+          content: '',
+          metadata: {
+            timestamp: new Date().toISOString(),
+            model: 'claude-3-haiku', // TODO: Get model from config/agent
+            conversationId: userMessage?.conversationId || conversationId, // Use saved ID if available
+            isComplete: true,
+          },
+        }),
+      } as MessageEvent;
+    } catch (error) {
+      console.error('Error in stream processing:', error);
+      // Yield error information to the client
+      yield {
+        data: JSON.stringify({
+          error: `An error occurred during streaming: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          metadata: {
+            timestamp: new Date().toISOString(),
+            conversationId: userMessage?.conversationId || conversationId, // Use saved ID if available
+            isComplete: true, // Signal completion even on error
+          },
+        }),
+      } as MessageEvent;
+      // The stream automatically closes when the generator finishes or throws an error.
+    }
   }
 
   @Get('chat/history')
