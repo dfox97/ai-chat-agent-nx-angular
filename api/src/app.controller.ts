@@ -18,7 +18,18 @@ import {
 } from './ai/tools';
 import { MessageService } from './entity/message.service';
 import { Message } from './entity/message.entity';
+import { from, Observable } from 'rxjs';
 
+export interface StreamedChatResponse {
+  content?: string; // Content chunk (optional, might be empty on completion signal)
+  error?: string; // Error message (optional)
+  metadata: {
+    timestamp: string;
+    model?: string; // Optional, might not be in every chunk
+    conversationId: string;
+    isComplete: boolean; // Flag to indicate the end of the stream
+  };
+}
 @Controller()
 export class AppController {
   constructor(
@@ -71,68 +82,10 @@ export class AppController {
   }
 
   @Sse('stream')
-  async *streamChat(
+  streamChat(
     @Query('message') message: string,
-  ): AsyncGenerator<MessageEvent> {
-    let userMessage: Message | null;
-    let fullResponse = '';
-    // TODO: Determine actual conversation ID (e.g., from request, session, or create new)
-    const conversationId = '1'; // Placeholder
-
-    try {
-      // 1. Save User Message
-      userMessage = await this.messageService.createMessage(
-        'user',
-        message,
-        conversationId,
-      );
-
-      // 2. Get message stream from AI Agent
-      const messageStream = await this.aiAgent.streamProcess(message);
-
-      // 3. Process the stream and yield chunks
-      for await (const chunk of messageStream) {
-        // console.log('Received chunk:', chunk); // Optional: server-side logging
-        fullResponse += chunk;
-
-        // Yield chunk to client as MessageEvent
-        yield {
-          data: JSON.stringify({
-            content: chunk,
-            metadata: {
-              timestamp: new Date().toISOString(),
-              model: 'claude-3-haiku', // TODO: Get model from config/agent
-              conversationId: userMessage.conversationId,
-              isComplete: false,
-            },
-          }),
-        } as MessageEvent;
-      }
-
-      // 4. Save the complete assistant message
-      if (fullResponse && userMessage) {
-        await this.messageService.createMessage(
-          'assistant',
-          fullResponse,
-          userMessage.conversationId,
-        );
-      }
-
-      // 5. Signal completion
-      yield {
-        data: JSON.stringify({
-          content: '',
-          metadata: {
-            timestamp: new Date().toISOString(),
-            model: 'claude-3-haiku', // TODO: Get model from config/agent
-            conversationId: userMessage?.conversationId || conversationId, // Use saved ID if available
-            isComplete: true,
-          },
-        }),
-      } as MessageEvent;
-    } catch (error) {
-      console.error('Error in stream processing:', error);
-    }
+  ): Observable<StreamedChatResponse> {
+    return from(this.generateStream(message));
   }
 
   @Get('chat/history')
@@ -145,5 +98,62 @@ export class AppController {
         messageCount: history.length,
       },
     };
+  }
+
+  private async *generateStream(
+    message: string,
+  ): AsyncGenerator<StreamedChatResponse> {
+    let userMessage: Message | null = null;
+    let fullResponse = '';
+    const conversationId = '1'; // TODO: Replace with real conversation logic
+
+    try {
+      // Save User Message
+      userMessage = await this.messageService.createMessage(
+        'user',
+        message,
+        conversationId,
+      );
+
+      // Get message stream from AI Agent
+      const messageStream = await this.aiAgent.streamProcess(message);
+
+      // Stream chunks
+      for await (const chunk of messageStream) {
+        fullResponse += chunk;
+
+        yield {
+          content: chunk,
+          metadata: {
+            timestamp: new Date().toISOString(),
+            model: 'claude-3-haiku',
+            conversationId: userMessage.conversationId,
+            isComplete: false,
+          },
+        };
+      }
+
+      // Save assistant response
+      if (fullResponse && userMessage) {
+        await this.messageService.createMessage(
+          'assistant',
+          fullResponse,
+          userMessage.conversationId,
+        );
+      }
+
+      // Final message: mark as complete
+      yield {
+        content: '',
+        metadata: {
+          timestamp: new Date().toISOString(),
+          model: 'claude-3-haiku',
+          conversationId: userMessage?.conversationId || conversationId,
+          isComplete: true,
+        },
+      };
+    } catch (error) {
+      console.error('Error in stream processing:', error);
+    }
   }
 }

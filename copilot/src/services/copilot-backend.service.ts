@@ -1,6 +1,6 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Observable, map, catchError, throwError, of } from "rxjs";
+import { Observable, map, catchError, throwError } from "rxjs";
 import { environment } from "src/environment";
 
 export interface ChatMessage {
@@ -90,56 +90,48 @@ export class CopilotBackendService {
    * @returns An Observable that emits parsed message chunks from the SSE stream.
    */
   streamMessages(message: string): Observable<StreamedChatResponse> {
-    // Construct the URL with the message as a query parameter
     const url = `${environment.apiUrl}/stream?message=${encodeURIComponent(message)}`;
-    console.log('Connecting to SSE stream:', url);
 
     return new Observable<StreamedChatResponse>((observer) => {
-      // Create an EventSource instance
-      const eventSource = new EventSource(url);
+      fetch(url)
+        .then(response => {
+          const reader = response.body?.getReader();
+          const decoder = new TextDecoder();
 
-      // Handle incoming messages
-      eventSource.onmessage = (event) => {
-        // console.log('SSE message received:', event.data);
-        try {
-          const parsedData: StreamedChatResponse = JSON.parse(event.data);
-          observer.next(parsedData);
+          const readChunk = () => {
+            reader?.read().then(({ done, value }) => {
+              if (done) {
+                observer.complete();
+                return;
+              }
 
-          // Check if the stream is complete
-          if (parsedData.metadata?.isComplete) {
-            console.log('SSE stream complete.');
-            observer.complete();
-            eventSource.close(); // Close the connection
-          }
-        } catch (error) {
-          console.error('Error parsing SSE message:', error);
-          observer.error(new Error('Failed to parse message from stream'));
+              const chunk = decoder.decode(value, { stream: true });
 
-          eventSource.close(); // Close connection on parse error
-        }
-      };
+              try {
+                const parsed = JSON.parse(chunk);
+                observer.next(parsed);
 
-      // Handle errors
-      eventSource.onerror = (error) => {
-        console.error('SSE error:', error);
-        // Don't close the stream immediately on typical EventSource errors,
-        // as it might try to reconnect. However, signal an error to the subscriber.
-        // If it's a persistent error, the EventSource might close itself.
-        // We might need more sophisticated error handling depending on the specific errors.
-        observer.error(new Error('Stream connection error'));
-        // Consider closing based on error type or after retries fail
-        eventSource.close(); // Close on error for now
-      };
+                if (parsed.metadata?.isComplete) {
+                  observer.complete();
+                }
+              } catch (err) {
+                console.error('Error parsing chunk:', chunk);
+                observer.error(err);
+              }
 
-      // Return a teardown function to close the EventSource when the Observable is unsubscribed
-      return () => {
-        if (eventSource.readyState !== EventSource.CLOSED) {
-          console.log('Closing SSE stream due to unsubscription.');
-          eventSource.close();
-        }
-      };
+              readChunk();
+            });
+          };
+
+          readChunk();
+        })
+        .catch((err) => {
+          observer.error(err);
+        });
     });
   }
+
+
 
 //   /**
 //    * Get conversation history
