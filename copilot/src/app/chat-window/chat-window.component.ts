@@ -102,13 +102,7 @@ export class ChatWindowComponent implements AfterViewChecked {
           };
           // Add or replace the last message with the error
           this.messages.update(currentMessages => {
-            if (assistantMessageId && currentMessages.length > 0 && currentMessages[currentMessages.length - 1].id === assistantMessageId) {
-              // Replace the partially formed message if it exists
-              return [...currentMessages.slice(0, -1), errorMsg];
-            } else {
-              // Otherwise, just add the error message
-              return [...currentMessages, errorMsg];
-            }
+            return [...currentMessages, errorMsg];
           });
           this.isLoading.set(false); // Stop loading on error
           this.shouldScrollToBottom = true;
@@ -169,11 +163,7 @@ export class ChatWindowComponent implements AfterViewChecked {
         };
         // Add or replace the last message with the error
         this.messages.update(currentMessages => {
-          if (assistantMessageId && currentMessages.length > 0 && currentMessages[currentMessages.length - 1].id === assistantMessageId) {
-            return [...currentMessages.slice(0, -1), errorMsg];
-          } else {
-            return [...currentMessages, errorMsg];
-          }
+          return [...currentMessages, errorMsg];
         });
         this.isLoading.set(false); // Stop loading on error
         this.shouldScrollToBottom = true;

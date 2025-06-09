@@ -1,3 +1,4 @@
+
 <div class="chat-window">
   <div class="chat-messages" #messageContainer>
     @if (isFirstMessage) {
@@ -18,7 +19,7 @@
       </div>
     }
 
-    @for (message of messages; track message) {
+    @for (message of messages(); track message) {
       <div class="message" [class.user-message]="message.role === 'user'" [class.assistant-message]="message.role === 'assistant'">
         <div class="message-content">
           <div class="message-avatar">
