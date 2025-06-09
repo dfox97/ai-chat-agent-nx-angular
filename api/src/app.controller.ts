@@ -17,7 +17,7 @@ import {
   WikiTool,
 } from './ai/tools';
 import { MessageService } from './entity/message.service';
-import { Observable } from 'rxjs';
+import { Message } from './entity/message.entity';
 
 @Controller()
 export class AppController {
@@ -74,7 +74,7 @@ export class AppController {
   async *streamChat(
     @Query('message') message: string,
   ): AsyncGenerator<MessageEvent> {
-    let userMessage;
+    let userMessage: Message | null;
     let fullResponse = '';
     // TODO: Determine actual conversation ID (e.g., from request, session, or create new)
     const conversationId = '1'; // Placeholder
@@ -88,7 +88,7 @@ export class AppController {
       );
 
       // 2. Get message stream from AI Agent
-      const messageStream = this.aiAgent.streamProcess(message);
+      const messageStream = await this.aiAgent.streamProcess(message);
 
       // 3. Process the stream and yield chunks
       for await (const chunk of messageStream) {
@@ -132,18 +132,6 @@ export class AppController {
       } as MessageEvent;
     } catch (error) {
       console.error('Error in stream processing:', error);
-      // Yield error information to the client
-      yield {
-        data: JSON.stringify({
-          error: `An error occurred during streaming: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          metadata: {
-            timestamp: new Date().toISOString(),
-            conversationId: userMessage?.conversationId || conversationId, // Use saved ID if available
-            isComplete: true, // Signal completion even on error
-          },
-        }),
-      } as MessageEvent;
-      // The stream automatically closes when the generator finishes or throws an error.
     }
   }
 
