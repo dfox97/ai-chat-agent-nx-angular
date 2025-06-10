@@ -71,17 +71,39 @@ export class ChatWindowComponent implements AfterViewChecked {
     // Update the message input query signal
     this.messageInputQuery.set(message);
 
-    const messageChat: ChatMessage = {
-      content: message,
+    this.messages.update((val) => {
+      return [...val, {
+        content: message,
+        role: 'user',
+        timestamp: new Date().toISOString(),
+      }]
+    });
+    const assistantMessage: ChatMessage = {
+      content: '',
       timestamp: new Date().toISOString(),
-      role: 'user',
+      role: 'assistant',
     };
-
-    void this.messageAi(messageChat);
+    // Send message and handle streaming response
+    this.chatService.sendMessage(message).subscribe({
+      next: (response) => {
+        // Update the assistant message content
+        assistantMessage.content = response.response || 'No response received';
+      },
+      error: (error) => {
+        console.error('Error sending message:', error);
+        assistantMessage.content = 'Error: Failed to get response';
+      },
+      complete: () => {
+        console.log('Stream subscription completed');
+      }
+    });
+    //void this.messageAi(messageChat);
   }
 
   async messageAi(messageChat: ChatMessage): Promise<void> {
     this.streamAiResponse(messageChat.content);
+
+
   }
 
 

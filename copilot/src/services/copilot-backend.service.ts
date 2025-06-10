@@ -83,7 +83,43 @@ export class CopilotBackendService {
       })
     );
   }
+  sendMessageStream(message: string, conversationId?: string): Observable<StreamedChatResponse> {
+    return new Observable(observer => {
+      const url = new URL(`${this.apiUrl}/stream`);
+      url.searchParams.append('message', message);
+      if (conversationId) {
+        url.searchParams.append('conversationId', conversationId);
+      }
 
+      const eventSource = new EventSource(url.toString());
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data: StreamedChatResponse = JSON.parse(event.data);
+          observer.next(data);
+
+          // Close connection when stream is complete
+          if (data.metadata.isComplete) {
+            eventSource.close();
+            observer.complete();
+          }
+        } catch (error) {
+          observer.error(error);
+          eventSource.close();
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        observer.error(error);
+        eventSource.close();
+      };
+
+      // Cleanup function
+      return () => {
+        eventSource.close();
+      };
+    });
+  }
   /**
    * Connect to the streaming endpoint and receive messages.
    * @param message The user's message to send.
