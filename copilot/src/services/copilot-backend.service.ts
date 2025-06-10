@@ -1,9 +1,8 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Observable, map, catchError, throwError } from "rxjs";
+import { Observable, catchError, throwError, startWith, map } from "rxjs";
 import { environment } from "src/environment";
 import { AgentResponse } from "../app/chat-window/chat-window.component";
-import z from "zod";
 
 export interface ChatMessage {
   id: string;
@@ -48,7 +47,6 @@ export class CopilotBackendService {
 
     // Create a simple test message object
     const payload = { message };
-    console.log('Request payload:', payload);
 
     // Add explicit headers
     const headers = {
@@ -58,18 +56,11 @@ export class CopilotBackendService {
 
     return this.http.post<ChatResponse>(this.apiUrl, payload, { headers }).pipe(
       map(response => {
-        console.log('API Response received:', response);
         response.response = JSON.parse(response.response as unknown as string) as AgentResponse;
         return response;
       }),
       catchError(error => {
         console.error('Error calling Copilot API:', error);
-        console.error('Error details:', {
-          status: error.status,
-          statusText: error.statusText,
-          message: error.message,
-          error: error.error
-        });
         return throwError(() => new Error('Failed to get response from Copilot'));
       })
     );

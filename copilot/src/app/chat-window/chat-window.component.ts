@@ -102,23 +102,34 @@ export class ChatWindowComponent implements AfterViewChecked {
         timestamp: new Date().toISOString(),
       }]
     });
+
     const assistantMessage: ChatMessage = {
-      content: '',
+      content: 'thinking...',
       timestamp: new Date().toISOString(),
       role: 'assistant',
     };
+
+
+    // 3. Push assistant placeholder immediately
+    this.messages.update((val) => [...val, assistantMessage]);
     // Send message and handle streaming response
     this.chatService.sendMessage(message).subscribe({
       next: (response) => {
-        // Update the assistant message content
+        const updatedMessage: ChatMessage = {
+          ...assistantMessage,
+          content: response.response.finalAnswer || 'No response received'
+        };
 
-        assistantMessage.content = response.response.finalAnswer || 'No response received';
-        this.updateMessages(assistantMessage);
+        // Replace the placeholder message
+        this.updateMessages(updatedMessage);
       },
       error: (error) => {
         console.error('Error sending message:', error);
-        assistantMessage.content = 'Error: Failed to get response';
-        this.updateMessages(assistantMessage);
+        const updatedMessage: ChatMessage = {
+          ...assistantMessage,
+          content: 'Error: Failed to get response'
+        };
+        this.updateMessages(updatedMessage);
       },
       complete: () => {
         console.log('Stream subscription completed');
@@ -126,13 +137,12 @@ export class ChatWindowComponent implements AfterViewChecked {
     });
   }
 
-  private updateMessages(message: ChatMessage) {
-    this.messages.update((val) => {
-      return [
-        ...val,
-        message
-      ]
-    })
+  updateMessages(updatedMessage: ChatMessage) {
+    this.messages.update((msgs) => msgs.map(msg =>
+      msg.timestamp === updatedMessage.timestamp && msg.role === 'assistant'
+        ? updatedMessage
+        : msg
+    ));
   }
 
 }
