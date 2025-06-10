@@ -2,6 +2,8 @@ import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Observable, map, catchError, throwError } from "rxjs";
 import { environment } from "src/environment";
+import { AgentResponse } from "../app/chat-window/chat-window.component";
+import z from "zod";
 
 export interface ChatMessage {
   id: string;
@@ -16,7 +18,7 @@ export interface ChatRequest {
 }
 
 export interface ChatResponse {
-  response: string;
+  response: AgentResponse;
   metadata: ChatMetadata;
 }
 
@@ -25,18 +27,6 @@ interface ChatMetadata {
   model: string;
   query: string;
   conversationId: string;
-}
-
-// Interface for the data structure received via SSE
-export interface StreamedChatResponse {
-  content?: string; // Content chunk (optional, might be empty on completion signal)
-  error?: string; // Error message (optional)
-  metadata: {
-    timestamp: string;
-    model?: string; // Optional, might not be in every chunk
-    conversationId: string;
-    isComplete: boolean; // Flag to indicate the end of the stream
-  };
 }
 
 
@@ -69,6 +59,7 @@ export class CopilotBackendService {
     return this.http.post<ChatResponse>(this.apiUrl, payload, { headers }).pipe(
       map(response => {
         console.log('API Response received:', response);
+        response.response = JSON.parse(response.response as unknown as string) as AgentResponse;
         return response;
       }),
       catchError(error => {
@@ -83,90 +74,6 @@ export class CopilotBackendService {
       })
     );
   }
-  sendMessageStream(message: string, conversationId?: string): Observable<StreamedChatResponse> {
-    return new Observable(observer => {
-      const url = new URL(`${this.apiUrl}/stream`);
-      url.searchParams.append('message', message);
-      if (conversationId) {
-        url.searchParams.append('conversationId', conversationId);
-      }
-
-      const eventSource = new EventSource(url.toString());
-
-      eventSource.onmessage = (event) => {
-        try {
-          const data: StreamedChatResponse = JSON.parse(event.data);
-          observer.next(data);
-
-          // Close connection when stream is complete
-          if (data.metadata.isComplete) {
-            eventSource.close();
-            observer.complete();
-          }
-        } catch (error) {
-          observer.error(error);
-          eventSource.close();
-        }
-      };
-
-      eventSource.onerror = (error) => {
-        observer.error(error);
-        eventSource.close();
-      };
-
-      // Cleanup function
-      return () => {
-        eventSource.close();
-      };
-    });
-  }
-  /**
-   * Connect to the streaming endpoint and receive messages.
-   * @param message The user's message to send.
-   * @returns An Observable that emits parsed message chunks from the SSE stream.
-   */
-  streamMessages(message: string): Observable<StreamedChatResponse> {
-    const url = `${environment.apiUrl}/stream?message=${encodeURIComponent(message)}`;
-
-    return new Observable<StreamedChatResponse>((observer) => {
-      fetch(url)
-        .then(response => {
-          const reader = response.body?.getReader();
-          const decoder = new TextDecoder();
-
-          const readChunk = () => {
-            reader?.read().then(({ done, value }) => {
-              if (done) {
-                observer.complete();
-                return;
-              }
-
-              const chunk = decoder.decode(value, { stream: true });
-
-              try {
-                const parsed = JSON.parse(chunk);
-                observer.next(parsed);
-
-                if (parsed.metadata?.isComplete) {
-                  observer.complete();
-                }
-              } catch (err) {
-                console.error('Error parsing chunk:', chunk);
-                observer.error(err);
-              }
-
-              readChunk();
-            });
-          };
-
-          readChunk();
-        })
-        .catch((err) => {
-          observer.error(err);
-        });
-    });
-  }
-
 
 
 //   /**
