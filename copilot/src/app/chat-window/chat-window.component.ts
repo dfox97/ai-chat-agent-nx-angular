@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewChecked, Component, ElementRef, inject, signal, ViewChild, WritableSignal } from '@angular/core';
+import { AfterViewChecked, Component, ElementRef, inject, OnInit, resource, signal, ViewChild, WritableSignal } from '@angular/core';
 import { ChatInputComponent } from '../chat-input/chat-input.component';
 import { CopilotBackendService } from '../../services/copilot-backend.service';
 import z from 'zod';
+import { firstValueFrom } from 'rxjs';
 // make common file
 // Schema for tool execution details
 const AgentActionSchema = z.object({
@@ -28,9 +29,9 @@ export type AgentResponse = z.infer<typeof AgentResponseSchema>;
 
 
 
-interface ChatMessage {
+interface ChatMessageI {
   content: string;
-  timestamp: string;
+  timestamp: Date;
   role: 'user' | 'assistant';
 }
 
@@ -54,13 +55,14 @@ interface ChatMetadata {
   templateUrl: './chat-window.component.html',
   styleUrl: './chat-window.component.scss',
 })
-export class ChatWindowComponent implements AfterViewChecked {
+export class ChatWindowComponent implements AfterViewChecked, OnInit {
   readonly messageInputQuery = signal<string>('');
   private readonly chatService = inject(CopilotBackendService);
 
   // --- State managed by Signals ---
-  messages: WritableSignal<ChatMessage[]> = signal([]);
+  messages: WritableSignal<ChatMessageI[]> = signal([]);
   isLoading: WritableSignal<boolean> = signal(false);
+
   // ---------------------------------
 
   isFirstMessage = true; // Can remain a regular property
@@ -77,18 +79,35 @@ export class ChatWindowComponent implements AfterViewChecked {
   }
 
   private scrollToBottom(): void {
-    try {
-      // Use setTimeout to ensure scrolling happens after the view is fully updated
-      setTimeout(() => {
-        if (this.messageContainer?.nativeElement) {
-          this.messageContainer.nativeElement.scrollTop = this.messageContainer.nativeElement.scrollHeight;
-        }
-      }, 0);
-    } catch (err) {
-      console.error("Error scrolling to bottom:", err);
-    }
+    // Use setTimeout to ensure scrolling happens after the view is fully updated
+    setTimeout(() => {
+      if (this.messageContainer?.nativeElement) {
+        this.messageContainer.nativeElement.scrollTop = this.messageContainer.nativeElement.scrollHeight;
+      }
+    }, 0);
   }
 
+  async ngOnInit() {
+    this.chatService.getConversationHistory('1').subscribe((data) => {
+      if (data.length) {
+        this.isFirstMessage = false;
+      }
+
+      console.log('testing data', data)
+
+      //modify data.content so that the data is parsed to thought, finalAnswer, action
+      data = data.map((msg) => {
+        const parsedContent = JSON.parse(msg.content);
+        return {
+          ...msg,
+          content: parsedContent.finalAnswer || parsedContent.thought || 'No content',
+        }
+      });
+
+
+      this.messages.set(data)
+    });
+  }
 
   handleNewMessage(message: string) {
     this.isFirstMessage = false;
@@ -99,13 +118,13 @@ export class ChatWindowComponent implements AfterViewChecked {
       return [...val, {
         content: message,
         role: 'user',
-        timestamp: new Date().toISOString(),
+        timestamp: new Date(),
       }]
     });
 
-    const assistantMessage: ChatMessage = {
+    const assistantMessage: ChatMessageI = {
       content: 'thinking...',
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(),
       role: 'assistant',
     };
 
@@ -115,7 +134,7 @@ export class ChatWindowComponent implements AfterViewChecked {
     // Send message and handle streaming response
     this.chatService.sendMessage(message).subscribe({
       next: (response) => {
-        const updatedMessage: ChatMessage = {
+        const updatedMessage: ChatMessageI = {
           ...assistantMessage,
           content: response.response.finalAnswer || 'No response received'
         };
@@ -125,7 +144,7 @@ export class ChatWindowComponent implements AfterViewChecked {
       },
       error: (error) => {
         console.error('Error sending message:', error);
-        const updatedMessage: ChatMessage = {
+        const updatedMessage: ChatMessageI = {
           ...assistantMessage,
           content: 'Error: Failed to get response'
         };
@@ -137,7 +156,7 @@ export class ChatWindowComponent implements AfterViewChecked {
     });
   }
 
-  updateMessages(updatedMessage: ChatMessage) {
+  updateMessages(updatedMessage: ChatMessageI) {
     this.messages.update((msgs) => msgs.map(msg =>
       msg.timestamp === updatedMessage.timestamp && msg.role === 'assistant'
         ? updatedMessage

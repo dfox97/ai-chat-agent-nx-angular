@@ -1,8 +1,9 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Observable, catchError, throwError, startWith, map } from "rxjs";
+import { Observable, catchError, throwError, startWith, map, tap } from "rxjs";
 import { environment } from "src/environment";
 import { AgentResponse } from "../app/chat-window/chat-window.component";
+import { response } from "express";
 
 export interface ChatMessage {
   id: string;
@@ -59,6 +60,10 @@ export class CopilotBackendService {
         response.response = JSON.parse(response.response as unknown as string) as AgentResponse;
         return response;
       }),
+      tap(response => console.log(
+        'conversationId', response.metadata.conversationId,
+      )),
+      tap((response) => localStorage.setItem('conversationId', response.metadata.conversationId)),
       catchError(error => {
         console.error('Error calling Copilot API:', error);
         return throwError(() => new Error('Failed to get response from Copilot'));
@@ -67,20 +72,16 @@ export class CopilotBackendService {
   }
 
 
-//   /**
-//    * Get conversation history
-//    * @param conversationId The conversation ID
-//    */
-//   getConversationHistory(conversationId: string): Observable<ChatResponse[]> {
-//     return this.http.get<ChatResponse[]>(`${this.apiUrl}/history/${conversationId}`).pipe(
-//       map(responses => responses.map(response => ({
-//         ...response,
-//         timestamp: new Date(response.timestamp)
-//       }))),
-//       catchError(error => {
-//         console.error('Error fetching conversation history:', error);
-//         return throwError(() => new Error('Failed to fetch conversation history'));
-//       })
-//     );
-//   }
+  /**
+   * Get conversation history
+   * @param conversationId The conversation ID
+   */
+  getConversationHistory(conversationId: string): Observable<ChatMessage[]> {
+    return this.http.get<ChatMessage[]>(`${this.apiUrl}/message/${conversationId}`).pipe(
+      catchError(error => {
+        console.error('Error fetching conversation history:', error);
+        return throwError(() => new Error('Failed to fetch conversation history'));
+      })
+    );
+  }
 }
