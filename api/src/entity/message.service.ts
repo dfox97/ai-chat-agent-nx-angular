@@ -13,12 +13,14 @@ export class MessageService {
   async createMessage(
     role: string,
     content: string,
-    conversationId?: string,
+    conversationId: string,
   ): Promise<Message> {
     const message = new Message();
+    message.id = 1;
     message.role = role;
     message.content = content;
-    message.conversationId = conversationId || '';
+    message.conversationId = conversationId;
+
     return this.messageRepository.save(message);
   }
 
@@ -27,15 +29,5 @@ export class MessageService {
       where: { conversationId },
       order: { createdAt: 'ASC' },
     });
-  }
-
-  async getAllConversations(): Promise<string[]> {
-    const conversations = await this.messageRepository
-      .createQueryBuilder('message')
-      .select('message.conversationId')
-      .distinct(true)
-      .getRawMany();
-
-    return conversations.map((c) => c.conversationId);
   }
 }
