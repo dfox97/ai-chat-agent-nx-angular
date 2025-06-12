@@ -1,9 +1,9 @@
-import { CommonModule } from '@angular/common';
-import { AfterViewChecked, Component, ElementRef, inject, OnInit, resource, signal, ViewChild, WritableSignal } from '@angular/core';
-import { ChatInputComponent } from '../chat-input/chat-input.component';
-import { CopilotBackendService } from '../../services/copilot-backend.service';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { AfterViewChecked, Component, ElementRef, inject, OnInit, PLATFORM_ID, signal, ViewChild, WritableSignal } from '@angular/core';
 import z from 'zod';
-import { firstValueFrom } from 'rxjs';
+import { CopilotBackendService } from '../../services/copilot-backend.service';
+import { ChatInputComponent } from '../chat-input/chat-input.component';
+import { response } from 'express';
 // make common file
 // Schema for tool execution details
 const AgentActionSchema = z.object({
@@ -58,6 +58,7 @@ interface ChatMetadata {
 export class ChatWindowComponent implements AfterViewChecked, OnInit {
   readonly messageInputQuery = signal<string>('');
   private readonly chatService = inject(CopilotBackendService);
+  private readonly platformId = inject(PLATFORM_ID);
 
   // --- State managed by Signals ---
   messages: WritableSignal<ChatMessageI[]> = signal([]);
@@ -88,25 +89,30 @@ export class ChatWindowComponent implements AfterViewChecked, OnInit {
   }
 
   async ngOnInit() {
-    this.chatService.getConversationHistory('1').subscribe((data) => {
-      if (data.length) {
-        this.isFirstMessage = false;
-      }
-
-      console.log('testing data', data)
-
-      //modify data.content so that the data is parsed to thought, finalAnswer, action
-      data = data.map((msg) => {
-        const parsedContent = JSON.parse(msg.content);
-        return {
-          ...msg,
-          content: parsedContent.finalAnswer || parsedContent.thought || 'No content',
+    if (isPlatformBrowser(this.platformId)) {
+      console.log('getting conversationId from localStorage');
+      const convoId = localStorage.getItem('conversationId');
+      if (!convoId) return;
+      this.chatService.getConversationHistory(convoId).subscribe((data) => {
+        if (data.length) {
+          this.isFirstMessage = false;
         }
+
+        console.log('testing data', data)
+
+        //modify data.content so that the data is parsed to thought, finalAnswer, action
+        data = data.map((msg) => {
+          const parsedContent = JSON.parse(msg.content);
+          return {
+            ...msg,
+            content: parsedContent.finalAnswer || parsedContent.thought || 'No content',
+          }
+        });
+
+
+        this.messages.set(data)
       });
-
-
-      this.messages.set(data)
-    });
+    }
   }
 
   handleNewMessage(message: string) {

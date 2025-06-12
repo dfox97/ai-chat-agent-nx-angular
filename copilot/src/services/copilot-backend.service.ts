@@ -1,9 +1,10 @@
 import { HttpClient } from "@angular/common/http";
-import { Injectable } from "@angular/core";
+import { inject, Injectable, PLATFORM_ID } from "@angular/core";
 import { Observable, catchError, throwError, startWith, map, tap } from "rxjs";
 import { environment } from "src/environment";
 import { AgentResponse } from "../app/chat-window/chat-window.component";
 import { response } from "express";
+import { isPlatformBrowser } from "@angular/common";
 
 export interface ChatMessage {
   id: string;
@@ -36,6 +37,8 @@ interface ChatMetadata {
 export class CopilotBackendService {
   private readonly apiUrl = `${environment.apiUrl}/chat`;
 
+
+  private readonly platformID = inject(PLATFORM_ID);
   constructor(private http: HttpClient) { }
 
   /**
@@ -55,15 +58,19 @@ export class CopilotBackendService {
       'Accept': 'application/json'
     };
 
+
     return this.http.post<ChatResponse>(this.apiUrl, payload, { headers }).pipe(
       map(response => {
         response.response = JSON.parse(response.response as unknown as string) as AgentResponse;
         return response;
       }),
-      tap(response => console.log(
-        'conversationId', response.metadata.conversationId,
-      )),
-      tap((response) => localStorage.setItem('conversationId', response.metadata.conversationId)),
+      tap((response) => {
+        if (isPlatformBrowser(this.platformID)) {
+          console.log('Storing conversationId in localStorage:', response.metadata.conversationId);
+          localStorage.setItem('conversationId', response.metadata.conversationId)
+        }
+      }
+      ),
       catchError(error => {
         console.error('Error calling Copilot API:', error);
         return throwError(() => new Error('Failed to get response from Copilot'));
