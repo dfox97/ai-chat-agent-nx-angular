@@ -1,10 +1,9 @@
 import { HttpClient } from "@angular/common/http";
 import { inject, Injectable, PLATFORM_ID } from "@angular/core";
-import { Observable, catchError, throwError, startWith, map, tap } from "rxjs";
+import { Observable, catchError, throwError, map, tap } from "rxjs";
 import { environment } from "src/environment";
-import { AgentResponse } from "../app/chat-window/chat-window.component";
-import { response } from "express";
 import { isPlatformBrowser } from "@angular/common";
+import { AgentResponse } from "../app/chat-window/chat.service";
 
 export interface ChatMessage {
   id: string;
