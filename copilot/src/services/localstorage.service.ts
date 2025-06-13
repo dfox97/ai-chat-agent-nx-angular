@@ -9,7 +9,6 @@ export class LocalStorageService {
 
 
   getItem(key: string): string | null {
-    console.log('LocalStorageService.getItem called with key:', key);
     if (isPlatformBrowser(this.platformId)) {
       console.log('Accessing localStorage for key:', key, localStorage.getItem(key));
       return localStorage.getItem(key);

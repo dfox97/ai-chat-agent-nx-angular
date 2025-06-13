@@ -53,7 +53,7 @@ export class AppController {
         '1',
       );
 
-      await this.messageService.createMessage(
+      const assistantMessage = await this.messageService.createMessage(
         'assistant',
         typeof result === 'string' ? result : JSON.stringify(result),
         userMessage.conversationId,

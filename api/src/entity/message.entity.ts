@@ -8,7 +8,7 @@ import {
 @Entity()
 export class Message {
   @PrimaryGeneratedColumn()
-  id: number;
+  id: string;
 
   @Column()
   role: string; // 'user' or 'assistant'
@@ -22,4 +22,3 @@ export class Message {
   @CreateDateColumn()
   createdAt: Date;
 }
-
