@@ -8,7 +8,7 @@ import {
 @Entity()
 export class Message {
   @PrimaryGeneratedColumn()
-  id: string;
+  id: number;
 
   @Column()
   role: string; // 'user' or 'assistant'

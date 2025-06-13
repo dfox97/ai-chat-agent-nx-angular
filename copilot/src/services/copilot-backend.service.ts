@@ -44,12 +44,14 @@ export class CopilotBackendService {
    * Send a message to the Copilot API
    * @param message The user's message
    */
-  sendMessage(message: string): Observable<ChatResponse> {
+  sendMessage(message: string, conversationId?: string | null): Observable<ChatResponse> {
     console.log('Sending message to API:', message);
     console.log('API URL:', this.apiUrl);
 
     // Create a simple test message object
-    const payload = { message };
+    const payload = { message, conversationId };
+
+    console.log('Payload being sent:', payload);
 
     // Add explicit headers
     const headers = {

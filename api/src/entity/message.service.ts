@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Message } from './message.entity';
-import { randomUUID } from 'crypto';
 
 @Injectable()
 export class MessageService {
@@ -17,7 +16,6 @@ export class MessageService {
     conversationId: string,
   ): Promise<Message> {
     const message = new Message();
-    message.id = randomUUID();
     message.role = role;
     message.content = content;
     message.conversationId = conversationId;

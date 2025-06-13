@@ -56,10 +56,9 @@ export class ChatService {
     return this.chatAPIService.getConversationHistory(convoId).pipe(
       map((data) =>
         data.map((msg) => {
-          const parsed = JSON.parse(msg.content);
           return {
             ...msg,
-            content: parsed.finalAnswer || 'No content',
+            content: (msg.role === 'assistant') ? JSON.parse(msg.content).finalAnswer : msg.content,
           };
         })
       )
@@ -67,8 +66,8 @@ export class ChatService {
   }
 
 
-  public sendMessage(message: string): Promise<ChatResponse> {
-    return firstValueFrom(this.chatAPIService.sendMessage(message));
+  public sendMessage(message: string, convoId: string | null): Promise<ChatResponse> {
+    return firstValueFrom(this.chatAPIService.sendMessage(message, convoId));
   }
 
 

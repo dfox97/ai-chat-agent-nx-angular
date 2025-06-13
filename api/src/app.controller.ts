@@ -17,6 +17,7 @@ import {
 } from './ai/tools';
 import { MessageService } from './entity/message.service';
 import { Message } from './entity/message.entity';
+import { randomUUID } from 'node:crypto';
 
 export interface StreamedChatResponse {
   response: string; // Content chunk (optional, might be empty on completion signal)
@@ -43,14 +44,16 @@ export class AppController {
   // -H "Content-Type: application/json" \
   // -d '{"message": "Tell me about pirates in history"}'
   @Post('chat')
-  async chat(@Body() body: { message: string }): Promise<StreamedChatResponse> {
+  async chat(
+    @Body() body: { message: string; conversationId?: string },
+  ): Promise<StreamedChatResponse> {
     try {
       const result = await this.aiAgent.process(body.message);
 
       const userMessage = await this.messageService.createMessage(
         'user',
         body.message,
-        '1',
+        body.conversationId || randomUUID().toString(), // Generate a new conversation ID for the user message
       );
 
       const assistantMessage = await this.messageService.createMessage(

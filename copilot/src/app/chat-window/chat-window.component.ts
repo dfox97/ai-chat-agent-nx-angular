@@ -43,7 +43,8 @@ export class ChatWindowComponent {
     this.messages.update((val) => [...val, assistantMessage]);
 
     try {
-      const response = await this.chatService.sendMessage(message);
+      console.log('Sending message to chat service:', message);
+      const response = await this.chatService.sendMessage(message, this.#convoId);
 
       const updatedMessage: ChatMessageI = {
         ...assistantMessage,
