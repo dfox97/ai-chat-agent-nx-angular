@@ -86,7 +86,6 @@ export class AnthropicChatService {
       );
     }
   }
-  // Add TypeORM and redis for chat history
 
   async sendMessage(message: string): Promise<string> {
     try {

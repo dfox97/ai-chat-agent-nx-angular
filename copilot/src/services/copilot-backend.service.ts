@@ -49,7 +49,10 @@ export class CopilotBackendService {
     console.log('API URL:', this.apiUrl);
 
     // Create a simple test message object
-    const payload = { message, conversationId };
+    const payload: ChatRequest = {
+      message: message,
+      conversationId: conversationId || undefined
+    }
 
     console.log('Payload being sent:', payload);
 

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
 import { generateAgentPrompt } from './agent-prompt';
 import { LLMFactoryService } from './llms/llm-factory.service';
@@ -57,6 +57,7 @@ interface AgentInteraction extends AgentResponse {
 
 @Injectable()
 export class AIAgentService {
+  private readonly logger = new Logger(AIAgentService.name);
   private tools: Map<string, Tool<unknown, unknown>> = new Map();
   private llmService: LLMService;
 
@@ -77,12 +78,20 @@ export class AIAgentService {
       paramsSchema: toolDefinition.paramsSchema,
       resultSchema: toolDefinition.resultSchema,
       execute: async (params: TParams) => {
+        this.logger.debug(
+          `Executing tool: ${toolDefinition.name} with params: ${JSON.stringify(params)}`,
+        );
         const validatedParams = toolDefinition.paramsSchema.parse(params);
         const result = await toolDefinition.execute(validatedParams);
-        return toolDefinition.resultSchema.parse(result);
+        const parsedResult = toolDefinition.resultSchema.parse(result);
+        this.logger.debug(
+          `Tool: ${toolDefinition.name} executed, result: ${JSON.stringify(parsedResult)}`,
+        );
+        return parsedResult;
       },
     };
     this.tools.set(tool.name, tool);
+    this.logger.debug(`Tool registered: ${tool.name}`);
   }
 
   getTools(): Array<Tool<unknown, unknown>> {
@@ -111,15 +120,20 @@ export class AIAgentService {
       // Try to parse the response as JSON
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const parsed: AgentResponse = JSON.parse(response);
+      this.logger.debug(`Attempting to parse response: ${response}`);
 
       // Validate against our schema
-      return AgentResponseSchema.parse({
+      const validatedResponse = AgentResponseSchema.parse({
         thought: parsed.thought,
         action: parsed?.action ?? null,
         finalAnswer: parsed.finalAnswer.trim(),
       });
+      this.logger.debug(
+        `Successfully parsed and validated response: ${JSON.stringify(validatedResponse)}`,
+      );
+      return validatedResponse;
     } catch (error) {
-      console.error('Response parsing error:', error);
+      this.logger.error(`Response parsing error: ${error}`, error);
       // If parsing fails, treat it as a direct response
       return {
         thought: 'Direct response',
@@ -129,33 +143,44 @@ export class AIAgentService {
     }
   }
 
-  async streamProcess(query: string): Promise<AsyncGenerator<string>> {
-    return this.llmService.streamMessages(query);
-  }
-
   async process(query: string, maxIterations = 5): Promise<AgentInteraction> {
     let iterations = 0;
     let currentQuery = query;
+    this.logger.log(
+      `Starting process for query: "${query}" with max iterations: ${maxIterations}`,
+    );
 
     while (iterations < maxIterations) {
+      this.logger.debug(`Iteration ${iterations + 1}/${maxIterations}`);
       const prompt = this.generatePrompt(currentQuery);
       const responseStr = await this.llmService.sendMessage(prompt);
+      this.logger.debug(`LLM raw response: ${responseStr}`);
       const response = this.parseResponse(responseStr);
 
       // If there's no action needed, return the final answer
       if (!response.action) {
+        this.logger.debug(
+          `No action needed. Returning final answer: ${response.finalAnswer}`,
+        );
         return response as AgentInteraction;
       }
 
       // If there is an action, execute it
+      this.logger.debug(
+        `Action identified: ${JSON.stringify(response.action)}`,
+      );
       const tool = this.tools.get(response.action.tool);
       if (!tool) {
+        this.logger.error(`Tool ${response.action.tool} not found`);
         throw new Error(`Tool ${response.action.tool} not found`);
       }
 
       // Execute tool with proper typing
       const result = await tool.execute(response.action.params);
       const validatedResult: unknown = tool.resultSchema.parse(result);
+      this.logger.debug(
+        `Tool "${response.action.tool}" executed. Raw result: ${JSON.stringify(result)}, Validated result: ${JSON.stringify(validatedResult)}`,
+      );
 
       // Store the result in the response
       const responseWithResult: AgentInteraction = {
@@ -168,6 +193,9 @@ export class AIAgentService {
 
       // If this was the last action needed, return the response
       if (response.finalAnswer && response.finalAnswer !== '') {
+        this.logger.debug(
+          `Final answer found after tool execution: ${response.finalAnswer}`,
+        );
         return responseWithResult;
       }
 
@@ -178,9 +206,15 @@ export class AIAgentService {
           : JSON.stringify(validatedResult);
 
       currentQuery = `Previous thought: ${response.thought}\nTool used: ${response.action.tool}\nResult: ${resultStr}\nOriginal query: ${query}`;
+      this.logger.debug(
+        `Updating current query for next iteration: ${currentQuery}`,
+      );
       iterations++;
     }
 
+    this.logger.error(
+      `Max iterations (${maxIterations}) reached without final answer for query: "${query}"`,
+    );
     throw new Error('Max iterations reached without final answer');
   }
 }

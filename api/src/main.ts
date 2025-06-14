@@ -1,5 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { Logger } from '@nestjs/common';
+
+const logger = new Logger('Bootstrap');
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -12,8 +15,7 @@ async function bootstrap() {
   });
 
   app.use((req, res, next) => {
-    if (req.body) console.log('Request body exists:', req.body);
-    else console.log('No request body found');
+    if (req.body) logger.log('Request body exists:', req.body);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     next();
   });

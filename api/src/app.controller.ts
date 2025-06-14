@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Get,
   Param,
+  Logger,
 } from '@nestjs/common';
 import { AIAgentService } from './ai/ai-agent.service';
 import {
@@ -17,18 +18,19 @@ import {
 } from './ai/tools';
 import { MessageService } from './entity/message.service';
 import { Message } from './entity/message.entity';
-import { randomUUID } from 'node:crypto';
 
 export interface StreamedChatResponse {
   response: string; // Content chunk (optional, might be empty on completion signal)
   metadata: {
     timestamp: string;
-    model?: string; // Optional, might not be in every chunk
+    model?: string;
     conversationId: string;
   };
 }
 @Controller()
 export class AppController {
+  private readonly logger = new Logger('AppController');
+
   constructor(
     private readonly aiAgent: AIAgentService,
     private readonly messageService: MessageService,
@@ -40,27 +42,28 @@ export class AppController {
     this.aiAgent.registerTool(SearchTool);
   }
 
-  // curl -X POST http://localhost:3000/chat \
-  // -H "Content-Type: application/json" \
-  // -d '{"message": "Tell me about pirates in history"}'
   @Post('chat')
   async chat(
-    @Body() body: { message: string; conversationId?: string },
+    @Body() body: { message: string; conversationId?: string | null },
   ): Promise<StreamedChatResponse> {
     try {
       const result = await this.aiAgent.process(body.message);
 
+      this.logger.log('Successfully processed message:', body.message);
       const userMessage = await this.messageService.createMessage(
         'user',
         body.message,
-        body.conversationId || randomUUID().toString(), // Generate a new conversation ID for the user message
+        body?.conversationId,
       );
 
-      const assistantMessage = await this.messageService.createMessage(
+      await this.messageService.createMessage(
         'assistant',
         typeof result === 'string' ? result : JSON.stringify(result),
         userMessage.conversationId,
       );
+
+      this.logger.log('conversaton saved:', userMessage.conversationId);
+
       // Handle the string response from process method
       return {
         response: JSON.stringify(result),
@@ -71,7 +74,7 @@ export class AppController {
         },
       };
     } catch (error) {
-      console.error('Chat processing error:', error);
+      this.logger.error('Failed: Chat processing error:', error);
       throw new HttpException(
         `Failed to process message: ${error}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -83,7 +86,7 @@ export class AppController {
   getChatHistory(
     @Param('conversationId') conversationId: string,
   ): Promise<Message[]> {
-    console.log(`Fetching messages for conversation:`, conversationId);
+    this.logger.log(`Fetching messages for conversation:`, conversationId);
     return this.messageService.getConversationMessages(conversationId);
   }
 }
