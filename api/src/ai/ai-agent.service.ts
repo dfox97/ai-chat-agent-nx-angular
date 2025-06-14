@@ -116,25 +116,50 @@ export class AIAgentService {
   }
 
   private parseResponse(response: string): AgentResponse {
-    try {
-      // Try to parse the response as JSON
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const parsed: AgentResponse = JSON.parse(response);
-      this.logger.debug(`Attempting to parse response: ${response}`);
+    const jsonStartIndex = response.indexOf('{');
+    const jsonEndIndex = response.lastIndexOf('}');
 
-      // Validate against our schema
-      const validatedResponse = AgentResponseSchema.parse({
-        thought: parsed.thought,
-        action: parsed?.action ?? null,
-        finalAnswer: parsed.finalAnswer.trim(),
-      });
+    if (
+      jsonStartIndex !== -1 &&
+      jsonEndIndex !== -1 &&
+      jsonEndIndex > jsonStartIndex
+    ) {
+      const jsonString = response.substring(jsonStartIndex, jsonEndIndex + 1);
+      this.logger.debug(`Extracted JSON string: ${jsonString}`);
+
+      try {
+        // Try to parse the extracted JSON string
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const parsed: AgentResponse = JSON.parse(jsonString);
+        this.logger.debug(`Attempting to parse response: ${jsonString}`);
+
+        // Validate against our schema
+        const validatedResponse = AgentResponseSchema.parse({
+          thought: parsed.thought,
+          action: parsed?.action ?? null,
+          finalAnswer: parsed.finalAnswer.trim(),
+        });
+        this.logger.debug(
+          `Successfully parsed and validated response: ${JSON.stringify(validatedResponse)}`,
+        );
+        return validatedResponse;
+      } catch (error) {
+        this.logger.error(
+          `Response parsing error for extracted JSON: ${error}`,
+          error,
+        );
+        // If parsing extracted JSON fails, fall back to direct response with original full response
+        return {
+          thought: 'Direct response (JSON extraction failed)',
+          action: null,
+          finalAnswer: response.trim(),
+        };
+      }
+    } else {
       this.logger.debug(
-        `Successfully parsed and validated response: ${JSON.stringify(validatedResponse)}`,
+        'No valid JSON object found in the response. Treating as direct response.',
       );
-      return validatedResponse;
-    } catch (error) {
-      this.logger.error(`Response parsing error: ${error}`, error);
-      // If parsing fails, treat it as a direct response
+      // If no JSON object is found, treat the entire response as a direct response
       return {
         thought: 'Direct response',
         action: null,
