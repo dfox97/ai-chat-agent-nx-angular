@@ -44,7 +44,7 @@ export class AppController {
 
   @Post('chat')
   async chat(
-    @Body() body: { message: string; conversationId?: string | null },
+    @Body() body: { message: string; conversationId?: string },
   ): Promise<StreamedChatResponse> {
     try {
       const result = await this.aiAgent.process(body.message);

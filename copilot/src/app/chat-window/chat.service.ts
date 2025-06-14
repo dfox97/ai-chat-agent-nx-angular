@@ -51,7 +51,6 @@ export class ChatService {
 
 
   public loadChatHistory(convoId: string | null): Observable<ChatMessageI[]> {
-    console.log('logging conversation ID:', convoId);
     if (!convoId) return EMPTY;
     return this.chatAPIService.getConversationHistory(convoId).pipe(
       map((data) =>
