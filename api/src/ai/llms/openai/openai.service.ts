@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
-import { LLMService, LLMConfig, Message } from '../types/types';
+import { LLMService, LLMConfig, ApiMessage } from '../types/types';
 
 @Injectable()
 export class OpenAIChatService implements LLMService {
   private openai: OpenAI;
-  private conversationHistory: Message[] = [];
+  private conversationHistory: ApiMessage[] = [];
   private config: LLMConfig;
 
   constructor(
@@ -27,12 +27,8 @@ export class OpenAIChatService implements LLMService {
     this.conversationHistory = [];
   }
 
-  public getConversationHistory(): Message[] {
-    return [...this.conversationHistory];
-  }
-
-  async *streamMessages(message: string): AsyncGenerator<string> {
-    return null;
+  public setConversationHistory(messages: ApiMessage[]) {
+    this.conversationHistory = messages;
   }
 
   async sendMessage(message: string): Promise<string> {
@@ -52,15 +48,15 @@ export class OpenAIChatService implements LLMService {
         temperature: this.config.temperature,
       });
 
-      const assistantMessage =
+      const assistantApiMessage =
         response.choices[0].message?.content?.trim() || '';
 
       this.conversationHistory.push({
         role: 'assistant',
-        content: assistantMessage,
+        content: assistantApiMessage,
       });
 
-      return assistantMessage;
+      return assistantApiMessage;
     } catch (error) {
       console.error('OpenAI API error:', error);
       throw new Error(

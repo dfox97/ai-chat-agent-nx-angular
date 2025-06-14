@@ -1,8 +1,7 @@
 export interface LLMService {
   sendMessage(message: string): Promise<string>;
-  streamMessages(message: string): AsyncGenerator<string>;
+  setConversationHistory(messages: ApiMessage[]): void;
   clearConversation(): void;
-  getConversationHistory(): Message[];
 }
 
 export enum LLMProvider {
@@ -12,9 +11,17 @@ export enum LLMProvider {
 }
 
 export interface Message {
+  id?: number;
   role: 'user' | 'assistant';
   content: string;
+  conversationId?: string;
+  createdAt?: Date;
 }
+
+export type ApiMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
 
 export interface LLMConfig {
   apiKey?: string;

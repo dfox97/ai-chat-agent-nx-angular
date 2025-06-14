@@ -47,6 +47,14 @@ export class AppController {
     @Body() body: { message: string; conversationId?: string },
   ): Promise<StreamedChatResponse> {
     try {
+      if (body.conversationId) {
+        const history = await this.messageService.getConversationMessages(
+          body.conversationId,
+        );
+
+        this.aiAgent.setConversationHistory(history as any);
+      }
+
       const result = await this.aiAgent.process(body.message);
 
       this.logger.log('Successfully processed message:', body.message);

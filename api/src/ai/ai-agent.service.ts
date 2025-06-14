@@ -6,7 +6,7 @@ import {
   LLMService,
   LLMProvider,
   LLMConfig,
-  Message,
+  ApiMessage,
 } from './llms/types/types';
 
 // Generic type for tool parameters and return values
@@ -98,8 +98,8 @@ export class AIAgentService {
     return Array.from(this.tools.values());
   }
 
-  getConversationHistory(): Message[] {
-    return this.llmService.getConversationHistory();
+  setConversationHistory(messages: ApiMessage[]) {
+    this.llmService.setConversationHistory(messages);
   }
 
   // when we make a chat service we should split this into using a system promp with a context.
