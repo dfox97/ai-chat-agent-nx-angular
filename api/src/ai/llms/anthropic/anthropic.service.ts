@@ -48,14 +48,11 @@ export class AnthropicChatService {
         role: 'user',
         content: message,
       });
-      // Inside sendMessage method, before calling this.anthropic.messages.create
-      const messagesToSend = this.conversationHistory.map(
-        ({ role, content }) => ({ role, content }),
-      );
+
       // Get response from Anthropic
       const response = (await this.anthropic.messages.create({
         max_tokens: 1024,
-        messages: messagesToSend,
+        messages: this.conversationHistory,
         model: 'claude-3-5-haiku-latest',
       })) as LLMResponse; // Fixes same annying type complaints
 

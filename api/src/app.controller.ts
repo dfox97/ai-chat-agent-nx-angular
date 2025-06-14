@@ -18,6 +18,7 @@ import {
 } from './ai/tools';
 import { MessageService } from './entity/message.service';
 import { Message } from './entity/message.entity';
+import { ApiMessage } from './ai/llms/types/types';
 
 export interface StreamedChatResponse {
   response: string; // Content chunk (optional, might be empty on completion signal)
@@ -52,7 +53,12 @@ export class AppController {
           body.conversationId,
         );
 
-        this.aiAgent.setConversationHistory(history as any);
+        const apiMessages: ApiMessage[] = history.map((msg) => ({
+          content: msg.content,
+          role: msg.role as 'user' | 'assistant',
+        }));
+
+        this.aiAgent.setConversationHistory(apiMessages);
       }
 
       const result = await this.aiAgent.process(body.message);
