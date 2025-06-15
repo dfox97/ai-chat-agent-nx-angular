@@ -1,77 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { z } from 'zod';
 import { generateAgentPrompt } from './agent-prompt';
 import { LLMFactoryService } from './llms/llm-factory.service';
+import { LLMProvider } from './llms/types/base-response-types';
+import { LLMBase, ApiMessage } from './llms/types/types';
 import {
-  LLMService,
-  LLMProvider,
-  LLMConfig,
-  ApiMessage,
-} from './llms/types/types';
-
-// Generic type for tool parameters and return values
-export interface ToolDefinition<TParams = any, TResult = any> {
-  name: string;
-  description: string;
-  paramsSchema: z.ZodType<TParams>;
-  resultSchema: z.ZodType<TResult>;
-  execute: (params: TParams) => Promise<TResult>;
-}
-
-// Interface for tool definition
-interface Tool<TParams = any, TResult = any> {
-  name: string;
-  description: string;
-  paramsSchema: z.ZodType<TParams>;
-  resultSchema: z.ZodType<TResult>;
-  execute: (params: TParams) => Promise<TResult>;
-}
-
-// Schema for tool execution details
-const AgentActionSchema = z.object({
-  tool: z.string(),
-  params: z
-    .record(z.any())
-    .describe("Tool parameters matching the tool's schema"),
-});
-
-// Schema for the complete agent interaction
-const AgentResponseSchema = z.object({
-  thought: z.string().describe('Reasoning about the response or tool usage'),
-
-  // Optional tool action if needed
-  action: AgentActionSchema.nullable().describe(
-    'Tool to use, or null if no tool needed',
-  ),
-
-  finalAnswer: z.string().describe('Complete response to the user'),
-});
-// Types derived from schemas
-type AgentAction = z.infer<typeof AgentActionSchema>;
-type AgentResponse = z.infer<typeof AgentResponseSchema>;
-
-// Extended action type that includes the tool execution result
-interface AgentInteraction extends AgentResponse {
-  action: (AgentAction & { result?: unknown }) | null;
-}
+  AgentResponse,
+  AgentResponseSchema,
+  AgentInteraction,
+  Tool,
+} from './ai-agent-types';
 
 @Injectable()
 export class AIAgentService {
   private readonly logger = new Logger(AIAgentService.name);
   private tools: Map<string, Tool<unknown, unknown>> = new Map();
-  private llmService: LLMService;
+  private llmService: LLMBase;
 
   constructor(
     private llmFactory: LLMFactoryService,
     provider: LLMProvider = LLMProvider.ANTHROPIC,
-    config?: LLMConfig,
   ) {
-    this.llmService = this.llmFactory.createLLMService(provider, config);
+    this.llmService = this.llmFactory.createLLMService(provider);
   }
 
-  registerTool<TParams, TResult>(
-    toolDefinition: ToolDefinition<TParams, TResult>,
-  ) {
+  registerTool<TParams, TResult>(toolDefinition: Tool<TParams, TResult>) {
     const tool: Tool<TParams, TResult> = {
       name: toolDefinition.name,
       description: toolDefinition.description,
@@ -98,7 +50,7 @@ export class AIAgentService {
     return Array.from(this.tools.values());
   }
 
-  setConversationHistory(messages: ApiMessage[]) {
+  setConversationHistory(messages: ApiMessage[]): void {
     this.llmService.setConversationHistory(messages);
   }
 

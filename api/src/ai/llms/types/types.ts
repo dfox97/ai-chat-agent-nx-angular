@@ -2,18 +2,14 @@ export * from './base-response-types';
 export * from './anthropic-response-types';
 export * from './openai-response-types';
 
-export interface LLMService {
-  sendMessage(message: string): Promise<string>;
-  setConversationHistory(messages: ApiMessage[]): void;
-  clearConversation(): void;
-}
+export abstract class LLMBase {
+  protected conversationHistory: ApiMessage[] = [];
 
-export interface Message {
-  id?: number;
-  role: 'user' | 'assistant';
-  content: string;
-  conversationId?: string;
-  createdAt?: Date;
+  abstract sendMessage(message: string): Promise<string>;
+
+  setConversationHistory(messages: ApiMessage[]): void {
+    this.conversationHistory = messages;
+  }
 }
 
 export type ApiMessage = {

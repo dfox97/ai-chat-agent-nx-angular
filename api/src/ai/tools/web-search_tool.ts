@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { z } from 'zod';
 import axios from 'axios';
-import { ToolDefinition } from '../ai-agent.service';
+import { Tool } from '../ai-agent-types';
 // Define the params schema with proper typing
 export const SearchParams = z
   .object({
@@ -24,7 +24,7 @@ export const SearchResult = z
 const SearchResults = z.array(SearchResult);
 
 // Use proper type inference for the ToolDefinition
-export const SearchTool: ToolDefinition<
+export const SearchTool: Tool<
   z.input<typeof SearchParams>, // Use input type for params
   z.infer<typeof SearchResults>
 > = {

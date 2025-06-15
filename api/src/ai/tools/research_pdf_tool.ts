@@ -5,7 +5,7 @@ import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as pdfParse from 'pdf-parse';
-import { ToolDefinition } from '../ai-agent.service';
+import { Tool } from '../ai-agent-types';
 
 const researchPaperParamsSchema = z.object({
   filename: z
@@ -30,7 +30,7 @@ const researchPaperResultSchema = z.object({
   ),
 });
 
-export const ResearchPdfTool: ToolDefinition<
+export const ResearchPdfTool: Tool<
   z.infer<typeof researchPaperParamsSchema>,
   z.infer<typeof researchPaperResultSchema>
 > = {

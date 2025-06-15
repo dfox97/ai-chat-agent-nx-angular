@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import wikipedia from 'wikipedia';
-import { ToolDefinition } from '../ai-agent.service';
+import { Tool } from '../ai-agent-types';
 
 const wikiParamsSchema = z.object({
   query: z.string().describe('The search term to look up on Wikipedia'),
@@ -18,7 +18,7 @@ const wikiResultSchema = z.object({
   url: z.string(),
 });
 
-export const WikiTool: ToolDefinition<
+export const WikiTool: Tool<
   z.infer<typeof wikiParamsSchema>,
   z.infer<typeof wikiResultSchema>
 > = {

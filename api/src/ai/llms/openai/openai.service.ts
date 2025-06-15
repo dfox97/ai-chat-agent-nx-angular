@@ -1,37 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
-import { LLMService, LLMConfig, ApiMessage, fromOpenAI } from '../types/types';
+import { ApiMessage, fromOpenAI, LLMBase } from '../types/types';
 
 @Injectable()
-export class OpenAIChatService implements LLMService {
-  private openai: OpenAI;
-  private conversationHistory: ApiMessage[] = []; // want to use string for content to streamline between openai and anthropic
-  private config: LLMConfig;
+export class OpenAIChatService extends LLMBase {
+  private readonly openai: OpenAI;
+  protected conversationHistory: ApiMessage[] = []; // want to use string for content to streamline between openai and anthropic
 
-  constructor(
-    private configService: ConfigService,
-    config: LLMConfig = {},
-  ) {
-    this.config = {
-      apiKey: config.apiKey || this.configService.get<string>('OPENAI_API_KEY'),
-      modelName: config.modelName || 'gpt-4',
-      maxTokens: config.maxTokens || 1024,
-      temperature: config.temperature || 0.1,
-    };
+  constructor(private configService: ConfigService) {
+    super();
 
-    this.openai = new OpenAI(this.config);
+    this.openai = new OpenAI({
+      apiKey: this.configService.get<string>('OPENAI_API_KEY'),
+    });
   }
 
-  public clearConversation() {
-    this.conversationHistory = [];
-  }
-
-  public setConversationHistory(messages: ApiMessage[]) {
-    this.conversationHistory = messages;
-  }
-
-  async sendMessage(message: string): Promise<string> {
+  public async sendMessage(message: string): Promise<string> {
     try {
       this.conversationHistory.push({
         role: 'user',
@@ -40,23 +25,23 @@ export class OpenAIChatService implements LLMService {
 
       const response = fromOpenAI(
         await this.openai.chat.completions.create({
-          model: this.config.modelName!,
-          messages: this.conversationHistory.map((msg) => ({
-            role: msg.role,
-            content: msg?.content,
-          })),
-          max_tokens: this.config.maxTokens,
-          temperature: this.config.temperature,
+          model: 'gpt-3.5-turbo',
+          messages: this.conversationHistory,
+          max_tokens: 1024,
+          temperature: 0.1,
         }),
       );
 
+      // Extract the actual text response
       const assistantApiMessage = response.content?.trim() ?? '';
 
+      // Add assistant's response to history
       this.conversationHistory.push({
         role: 'assistant',
         content: assistantApiMessage,
       });
 
+      // Return the actual text response
       return assistantApiMessage;
     } catch (error) {
       console.error('OpenAI API error:', error);

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await */
 import { z } from 'zod';
-import { ToolDefinition } from '../ai-agent.service';
+import { Tool } from '../ai-agent-types';
 
 const pirateParamsSchema = z.object({
   text: z.string().describe('Text to translate into pirate speak'),
@@ -27,7 +27,7 @@ const pirateTranslations: Record<string, string> = {
   wow: 'shiver me timbers',
 };
 
-export const PirateTool: ToolDefinition<
+export const PirateTool: Tool<
   z.infer<typeof pirateParamsSchema>,
   z.infer<typeof pirateResultSchema>
 > = {

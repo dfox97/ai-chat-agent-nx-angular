@@ -5,7 +5,7 @@ import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as pdfParse from 'pdf-parse';
-import { ToolDefinition } from '../ai-agent.service';
+import { Tool } from '../ai-agent-types';
 
 const pdfParamsSchema = z.object({
   filename: z
@@ -20,7 +20,7 @@ const pdfResultSchema = z.object({
   wordCount: z.number(),
 });
 
-export const PdfTool: ToolDefinition<
+export const PdfTool: Tool<
   z.infer<typeof pdfParamsSchema>,
   z.infer<typeof pdfResultSchema>
 > = {
