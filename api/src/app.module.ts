@@ -7,6 +7,8 @@ import { AppController } from './app.controller';
 import { Message } from './entity/message.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MessageService } from './entity/message.service';
+import { AgentPromptService } from './ai/ai-agent-prompt.service';
+import { LLMResponseParser } from './ai/llms/llm-response-parser.service';
 
 @Module({
   imports: [
@@ -24,13 +26,19 @@ import { MessageService } from './entity/message.service';
   controllers: [AppController],
   providers: [
     LLMFactoryService,
+    LLMResponseParser,
+    AgentPromptService,
     MessageService,
     {
       provide: AIAgentService,
-      useFactory: (llmFactory: LLMFactoryService) => {
-        return new AIAgentService(llmFactory);
+      useFactory: (
+        llmFactory: LLMFactoryService,
+        llmParser: LLMResponseParser,
+        promptService: AgentPromptService,
+      ) => {
+        return new AIAgentService(llmFactory, llmParser, promptService);
       },
-      inject: [LLMFactoryService],
+      inject: [LLMFactoryService, LLMResponseParser, AgentPromptService],
     },
   ],
   exports: [AIAgentService, MessageService],

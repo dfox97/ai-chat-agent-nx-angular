@@ -51,6 +51,8 @@ export class ChatWindowComponent {
         content: response.response.finalAnswer || 'No response received'
       };
 
+      console.log('Received response from chat service:', updatedMessage.content);
+
       // Replace the placeholder message
       this.updateMessages(updatedMessage);
     } catch (error) {

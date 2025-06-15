@@ -1,14 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { generateAgentPrompt } from './agent-prompt';
+import { Tool, AgentInteraction } from './ai-agent-types';
 import { LLMFactoryService } from './llms/llm-factory.service';
+import { LLMResponseParser } from './llms/llm-response-parser.service';
 import { LLMProvider } from './llms/types/base-response-types';
 import { LLMBase, ApiMessage } from './llms/types/types';
-import {
-  AgentResponse,
-  AgentResponseSchema,
-  AgentInteraction,
-  Tool,
-} from './ai-agent-types';
+import { AgentPromptService } from './ai-agent-prompt.service';
 
 @Injectable()
 export class AIAgentService {
@@ -18,6 +14,8 @@ export class AIAgentService {
 
   constructor(
     private llmFactory: LLMFactoryService,
+    private llmParser: LLMResponseParser,
+    private promptService: AgentPromptService,
     provider: LLMProvider = LLMProvider.ANTHROPIC,
   ) {
     this.llmService = this.llmFactory.createLLMService(provider);
@@ -54,72 +52,6 @@ export class AIAgentService {
     this.llmService.setConversationHistory(messages);
   }
 
-  // when we make a chat service we should split this into using a system promp with a context.
-  private generatePrompt(userQuery: string): string {
-    const toolDescriptions = Array.from(this.tools.entries())
-      .map(([name, tool]) => {
-        const paramsInfo =
-          tool.paramsSchema.description || 'No parameter description available';
-        return `${name}: ${tool.description}\nParameters: ${paramsInfo}`;
-      })
-      .join('\n\n');
-
-    return generateAgentPrompt(toolDescriptions, userQuery);
-  }
-
-  private parseResponse(response: string): AgentResponse {
-    const jsonStartIndex = response.indexOf('{');
-    const jsonEndIndex = response.lastIndexOf('}');
-
-    if (
-      jsonStartIndex !== -1 &&
-      jsonEndIndex !== -1 &&
-      jsonEndIndex > jsonStartIndex
-    ) {
-      const jsonString = response.substring(jsonStartIndex, jsonEndIndex + 1);
-      this.logger.debug(`Extracted JSON string: ${jsonString}`);
-
-      try {
-        // Try to parse the extracted JSON string
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const parsed: AgentResponse = JSON.parse(jsonString);
-        this.logger.debug(`Attempting to parse response: ${jsonString}`);
-
-        // Validate against our schema
-        const validatedResponse = AgentResponseSchema.parse({
-          thought: parsed.thought,
-          action: parsed?.action ?? null,
-          finalAnswer: parsed.finalAnswer.trim(),
-        });
-        this.logger.debug(
-          `Successfully parsed and validated response: ${JSON.stringify(validatedResponse)}`,
-        );
-        return validatedResponse;
-      } catch (error) {
-        this.logger.error(
-          `Response parsing error for extracted JSON: ${error}`,
-          error,
-        );
-        // If parsing extracted JSON fails, fall back to direct response with original full response
-        return {
-          thought: 'Direct response (JSON extraction failed)',
-          action: null,
-          finalAnswer: response.trim(),
-        };
-      }
-    } else {
-      this.logger.debug(
-        'No valid JSON object found in the response. Treating as direct response.',
-      );
-      // If no JSON object is found, treat the entire response as a direct response
-      return {
-        thought: 'Direct response',
-        action: null,
-        finalAnswer: response.trim(),
-      };
-    }
-  }
-
   async process(query: string, maxIterations = 5): Promise<AgentInteraction> {
     let iterations = 0;
     let currentQuery = query;
@@ -129,10 +61,13 @@ export class AIAgentService {
 
     while (iterations < maxIterations) {
       this.logger.debug(`Iteration ${iterations + 1}/${maxIterations}`);
-      const prompt = this.generatePrompt(currentQuery);
+      const prompt = this.promptService.generatePrompt(
+        this.getTools(),
+        currentQuery,
+      );
       const responseStr = await this.llmService.sendMessage(prompt);
       this.logger.debug(`LLM raw response: ${responseStr}`);
-      const response = this.parseResponse(responseStr);
+      const response = this.llmParser.parseLLMResponse(responseStr);
 
       // If there's no action needed, return the final answer
       if (!response.action) {
