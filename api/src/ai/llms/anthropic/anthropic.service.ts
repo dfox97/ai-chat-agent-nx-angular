@@ -1,26 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiMessage } from '../types/types';
-
-export interface LLMResponse {
-  id: string;
-  type: 'message';
-  role: 'assistant';
-  model: string;
-  content: Array<{
-    type: 'text';
-    text: string;
-  }>;
-  stop_reason: string | null;
-  stop_sequence: string | null;
-  usage: {
-    input_tokens: number;
-    output_tokens?: number;
-    cache_creation_input_tokens?: number;
-    cache_read_input_tokens?: number;
-  };
-}
+import { ApiMessage, fromAnthropic } from '../types/types';
 
 @Injectable()
 export class AnthropicChatService {
@@ -50,15 +31,16 @@ export class AnthropicChatService {
       });
 
       // Get response from Anthropic
-      const response = (await this.anthropic.messages.create({
-        max_tokens: 1024,
-        messages: this.conversationHistory,
-        model: 'claude-3-5-haiku-latest',
-      })) as LLMResponse; // Fixes same annying type complaints
+      const response = fromAnthropic(
+        await this.anthropic.messages.create({
+          max_tokens: 1024,
+          messages: this.conversationHistory,
+          model: 'claude-3-5-haiku-latest',
+        }),
+      );
 
       // Extract the actual text response
-      const assistantApiMessage = response.content[0].text.trim(); // Big object with response final answer can be large
-      console.log('Anthropic response text:', assistantApiMessage);
+      const assistantApiMessage = response.content?.trim() ?? '';
 
       // Add assistant's response to history
       this.conversationHistory.push({

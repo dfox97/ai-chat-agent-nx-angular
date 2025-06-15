@@ -1,13 +1,11 @@
+export * from './base-response-types';
+export * from './anthropic-response-types';
+export * from './openai-response-types';
+
 export interface LLMService {
   sendMessage(message: string): Promise<string>;
   setConversationHistory(messages: ApiMessage[]): void;
   clearConversation(): void;
-}
-
-export enum LLMProvider {
-  ANTHROPIC = 'anthropic',
-  OPENAI = 'openai',
-  LOCAL = 'local',
 }
 
 export interface Message {
@@ -30,4 +28,3 @@ export interface LLMConfig {
   maxTokens?: number;
   temperature?: number;
 }
-//model names...

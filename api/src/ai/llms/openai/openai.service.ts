@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
-import { LLMService, LLMConfig, ApiMessage } from '../types/types';
+import { LLMService, LLMConfig, ApiMessage, fromOpenAI } from '../types/types';
 
 @Injectable()
 export class OpenAIChatService implements LLMService {
   private openai: OpenAI;
-  private conversationHistory: ApiMessage[] = [];
+  private conversationHistory: ApiMessage[] = []; // want to use string for content to streamline between openai and anthropic
   private config: LLMConfig;
 
   constructor(
@@ -38,18 +38,19 @@ export class OpenAIChatService implements LLMService {
         content: message,
       });
 
-      const response = await this.openai.chat.completions.create({
-        model: this.config.modelName!,
-        messages: this.conversationHistory.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-        })),
-        max_tokens: this.config.maxTokens,
-        temperature: this.config.temperature,
-      });
+      const response = fromOpenAI(
+        await this.openai.chat.completions.create({
+          model: this.config.modelName!,
+          messages: this.conversationHistory.map((msg) => ({
+            role: msg.role,
+            content: msg?.content,
+          })),
+          max_tokens: this.config.maxTokens,
+          temperature: this.config.temperature,
+        }),
+      );
 
-      const assistantApiMessage =
-        response.choices[0].message?.content?.trim() || '';
+      const assistantApiMessage = response.content?.trim() ?? '';
 
       this.conversationHistory.push({
         role: 'assistant',
