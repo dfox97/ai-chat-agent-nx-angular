@@ -1,149 +1,121 @@
-.chat-window {
-  height: 100vh;
+/* chat-window.component.scss */
+
+:host {
   display: flex;
   flex-direction: column;
-  background-color: #343541;
-  color: #ffffff;
-  margin-left: 260px; // Account for sidebar width
+  height: 100vh;
+  background: #f4f6f9;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.chat-window {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.chat-messages {
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
+.chat-input-container {
+  flex: 0 0 auto;
+  border-top: 1px solid #ddd;
+  background: #fff;
+  padding: 1rem;
 }
 
 .chat-messages {
   flex: 1;
   overflow-y: auto;
   padding: 2rem;
-  scroll-behavior: smooth;
-}
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 
-.welcome-container {
-  max-width: 48rem;
-  margin: 0 auto;
-  text-align: center;
-  padding: 2rem;
+  // &.centered {
+  //   justify-content: center;
+  //   align-items: center;
+  //   text-align: center;
+  // }
 
-  h1 {
-    font-size: 2.5rem;
-    margin-bottom: 2rem;
-    background: linear-gradient(90deg, #00ff87, #60efff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
+  .welcome-container {
+    max-width: 500px;
+    margin: 0 auto;
 
-  .welcome-message {
-    font-size: 1.25rem;
-    margin-bottom: 2rem;
-
-    p {
-      margin: 0.5rem 0;
-    }
-  }
-
-  .example-prompts {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 0.75rem;
-    padding: 1.5rem;
-    margin-top: 2rem;
-
-    p {
+    h1 {
+      font-size: 2rem;
       margin-bottom: 1rem;
     }
 
-    ul {
+    .welcome-message p {
+      font-size: 1rem;
+      margin: 0.5rem 0;
+    }
+
+    .example-prompts ul {
       list-style: none;
-      padding: 0;
-      margin: 0;
+      padding-left: 0;
 
-      li {
-        margin: 0.75rem 0;
-        padding: 0.75rem;
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 0.5rem;
-        cursor: pointer;
-        transition: background-color 0.2s;
-
-        &:hover {
-          background: rgba(255, 255, 255, 0.1);
-        }
+      li::before {
+        content: '👉 ';
       }
     }
   }
-}
 
-.message {
-  max-width: 48rem;
-  margin: 1.5rem auto;
-
-  .message-content {
+  .message {
     display: flex;
-    gap: 1rem;
     align-items: flex-start;
-  }
+    gap: 1rem;
 
-  .message-avatar {
-    width: 2rem;
-    height: 2rem;
-    border-radius: 0.25rem;
-    background: rgba(255, 255, 255, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    &.user-message {
+      justify-content: flex-end;
 
-    i {
-      font-size: 1.25rem;
+      .message-content {
+        background-color: #daf0ff;
+        border-radius: 12px 12px 0 12px;
+      }
+
+      .message-avatar {
+        order: 2;
+      }
     }
-  }
 
-  .message-text {
-    flex: 1;
-    line-height: 1.6;
-    white-space: pre-wrap;
-  }
+    &.assistant-message {
+      justify-content: flex-start;
 
-  .message-timestamp {
-    font-size: 0.75rem;
-    color: #8e8ea0;
-    margin-top: 0.5rem;
-    margin-left: 3rem;
-  }
-
-  &.user-message {
-    .message-avatar {
-      background: #10a37f;
+      .message-content {
+        background-color: #ffffff;
+        border-radius: 12px 12px 12px 0;
+      }
     }
-  }
-
-  &.assistant-message {
-    background: rgba(255, 255, 255, 0.05);
-    padding: 1.5rem 0;
-    margin: 1rem -2rem;
 
     .message-content {
-      max-width: 48rem;
-      margin: 0 auto;
-      padding: 0 2rem;
+      padding: 0.75rem 1rem;
+      max-width: 70%;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+
+      .message-avatar {
+        font-size: 1.2rem;
+        color: #888;
+      }
+
+      .message-text {
+        font-size: 0.95rem;
+        line-height: 1.4;
+        word-wrap: break-word;
+      }
     }
 
     .message-timestamp {
-      max-width: 48rem;
-      margin-left: calc(3rem + 2rem);
-      padding: 0 2rem;
-    }
-
-    .message-avatar {
-      background: #19c37d;
+      font-size: 0.75rem;
+      color: #999;
+      margin-top: 0.25rem;
+      align-self: flex-end;
     }
   }
-}
-
-// Scrollbar styling
-.chat-messages::-webkit-scrollbar {
-  width: 6px;
-}
-
-.chat-messages::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.chat-messages::-webkit-scrollbar-thumb {
-  background-color: #565869;
-  border-radius: 3px;
 }

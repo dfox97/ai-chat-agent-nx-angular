@@ -1,6 +1,6 @@
 
 <div class="chat-window">
-  <div class="chat-messages" #messageContainer>
+<div class="chat-messages" #messageContainer [class.centered]="isFirstMessage()">
     @if (isFirstMessage()) {
       <div class="welcome-container">
         <h1>ChatGPT Clone</h1>

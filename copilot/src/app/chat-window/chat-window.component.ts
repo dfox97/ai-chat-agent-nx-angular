@@ -1,4 +1,4 @@
-import { Component, computed, inject, linkedSignal } from '@angular/core';
+import { AfterViewInit, Component, computed, ElementRef, inject, linkedSignal, ViewChild } from '@angular/core';
 import { ChatInputComponent } from '../chat-input/chat-input.component';
 import { LocalStorageService } from '../../services/localstorage.service';
 import { CommonModule } from '@angular/common';
@@ -13,7 +13,8 @@ import { ChatMessageI, ChatService } from './chat.service';
   templateUrl: './chat-window.component.html',
   styleUrl: './chat-window.component.scss',
 })
-export class ChatWindowComponent {
+export class ChatWindowComponent implements AfterViewInit {
+  @ViewChild('messageContainer') private messageContainer!: ElementRef;
   readonly localStorageService = inject(LocalStorageService);
   readonly chatService = inject(ChatService);
 
@@ -24,7 +25,9 @@ export class ChatWindowComponent {
   public readonly isFirstMessage = computed(() => !this.#convoHistory()?.length)
 
   public readonly messages = linkedSignal(() => this.#convoHistory() || []);
-
+  ngAfterViewInit(): void {
+    this.scrollToBottom();
+  }
   async handleNewMessage(message: string) {
     this.messages.update((val) => {
       return [...val, {
@@ -34,6 +37,7 @@ export class ChatWindowComponent {
       }]
     });
 
+    this.scrollToBottom(); // Scroll after user message is added
     const assistantMessage: ChatMessageI = {
       content: 'thinking...',
       timestamp: new Date(),
@@ -72,5 +76,12 @@ export class ChatWindowComponent {
         : msg
     ));
   }
-
+  private scrollToBottom(): void {
+    // A small delay to ensure the DOM has updated before scrolling
+    setTimeout(() => {
+      if (this.messageContainer) {
+        this.messageContainer.nativeElement.scrollTop = this.messageContainer.nativeElement.scrollHeight;
+      }
+    }, 0);
+  }
 }

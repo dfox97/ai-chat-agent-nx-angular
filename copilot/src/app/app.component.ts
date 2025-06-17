@@ -1,5 +1,4 @@
 import { Component } from '@angular/core';
-import { ChatSidebarComponent } from './chat-sidebar/chat-sidebar.component';
 import { RouterModule } from '@angular/router';
 import { ChatWindowComponent } from './chat-window/chat-window.component';
 
@@ -7,7 +6,7 @@ import { ChatWindowComponent } from './chat-window/chat-window.component';
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
-  imports: [ChatSidebarComponent, ChatWindowComponent, RouterModule],
+  imports: [ChatWindowComponent, RouterModule],
   standalone: true,
 })
 export class AppComponent {
