@@ -5,6 +5,26 @@ import { AgentResponse, AgentResponseSchema } from '../ai-agent-types';
 @Injectable()
 export class LLMResponseParser {
   private readonly logger = new Logger(LLMResponseParser.name);
+  private escapeJsonString(str: string): string {
+    return str.replace(/[\u0000-\u001F\u007F-\u009F]/g, function (char) {
+      switch (char) {
+        case '\b':
+          return '\\b';
+        case '\f':
+          return '\\f';
+        case '\n':
+          return '\\n';
+        case '\r':
+          return '\\r';
+        case '\t':
+          return '\\t';
+        default:
+          // Handle other control characters by escaping them to \uXXXX
+          const hex = char.charCodeAt(0).toString(16).padStart(4, '0');
+          return '\\u' + hex;
+      }
+    });
+  }
 
   parseLLMResponse(llmResponse: string): AgentResponse {
     const jsonStartIndex = llmResponse.indexOf('{');
@@ -15,14 +35,51 @@ export class LLMResponseParser {
       jsonEndIndex !== -1 &&
       jsonEndIndex > jsonStartIndex
     ) {
-      const jsonString = llmResponse.substring(
-        jsonStartIndex,
-        jsonEndIndex + 1,
-      );
+      let jsonString = llmResponse.substring(jsonStartIndex, jsonEndIndex + 1);
       this.logger.debug(`Extracted JSON string: ${jsonString}`);
 
       try {
-        const parsed: unknown = JSON.parse(jsonString);
+        // Attempt to parse directly, if it fails, try to repair
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(jsonString);
+        } catch (initialError) {
+          if (
+            initialError instanceof SyntaxError &&
+            initialError.message.includes('Bad control character')
+          ) {
+            this.logger.warn(
+              'Initial JSON parse failed due to bad control character. Attempting to repair by escaping string values.',
+            );
+
+            // A very basic and potentially unsafe repair: Re-JSON stringify to get proper escaping
+            // This assumes the structure is mostly correct but strings are not escaped.
+            // A more robust solution might involve a custom parser or stricter LLM output
+            // For now, let's try to stringify and re-parse common culprits like finalAnswer
+            const tempObj = {};
+            const finalAnswerMatch = jsonString.match(
+              /"finalAnswer"\s*:\s*"(.*?)(?<!\\)"/s,
+            );
+            if (finalAnswerMatch && finalAnswerMatch[1]) {
+              const rawFinalAnswer = finalAnswerMatch[1];
+              const escapedFinalAnswer = this.escapeJsonString(rawFinalAnswer);
+              // Simple regex replace, assuming no other "finalAnswer" strings in the JSON
+              jsonString = jsonString.replace(
+                rawFinalAnswer,
+                escapedFinalAnswer,
+              );
+              this.logger.debug(
+                `Repaired JSON string (finalAnswer): ${jsonString}`,
+              );
+            }
+
+            // Attempt parsing again after a basic repair
+            parsed = JSON.parse(jsonString);
+          } else {
+            throw initialError; // Re-throw other syntax errors
+          }
+        }
+
         this.logger.debug(
           `Attempting to validate parsed response: ${JSON.stringify(parsed)}`,
         );
