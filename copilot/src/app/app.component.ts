@@ -4,11 +4,12 @@ import { ChatWindowComponent } from './chat-window/chat-window.component';
 
 @Component({
   selector: 'app-root',
-  templateUrl: './app.component.html',
+  template: `
+   <app-chat-window></app-chat-window>
+   <router-outlet></router-outlet>
+  `,
   styleUrl: './app.component.scss',
   imports: [ChatWindowComponent, RouterModule],
   standalone: true,
 })
-export class AppComponent {
-  title = 'copilot';
-}
+export class AppComponent { }

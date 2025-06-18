@@ -1,34 +1,9 @@
 import { HttpClient } from "@angular/common/http";
 import { inject, Injectable, PLATFORM_ID } from "@angular/core";
 import { Observable, catchError, throwError, map, tap } from "rxjs";
-import { environment } from "src/environment";
 import { isPlatformBrowser } from "@angular/common";
-import { AgentResponse } from "../app/chat-window/chat.service";
-
-export interface ChatMessage {
-  id: string;
-  content: string;
-  role: 'user' | 'assistant';
-  timestamp: Date;
-}
-
-export interface ChatRequest {
-  message: string;
-  conversationId?: string;
-}
-
-export interface ChatResponse {
-  response: AgentResponse;
-  metadata: ChatMetadata;
-}
-
-interface ChatMetadata {
-  timestamp: string;
-  model: string;
-  query: string;
-  conversationId: string;
-}
-
+import { ChatResponse, ChatRequest, AgentResponse, ChatMessage } from "@copilot/shared-types";
+import { environment } from "../environment";
 
 @Injectable({
   providedIn: 'root'

@@ -1,20 +1,22 @@
 import { AfterViewInit, Component, computed, ElementRef, inject, linkedSignal, ViewChild } from '@angular/core';
 import { ChatInputComponent } from '../chat-input/chat-input.component';
 import { LocalStorageService } from '../../services/localstorage.service';
-import { CommonModule } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ChatMessageI, ChatService } from './chat.service';
+import { DatePipe } from '@angular/common';
+import { ChatService } from './chat.service';
+import { ChatMessageI } from '@copilot/shared-types';
 
 
 @Component({
   selector: 'app-chat-window',
-  standalone: true,
-  imports: [CommonModule, ChatInputComponent],
   templateUrl: './chat-window.component.html',
   styleUrl: './chat-window.component.scss',
+  standalone: true,
+  imports: [ChatInputComponent, DatePipe],
 })
 export class ChatWindowComponent implements AfterViewInit {
   @ViewChild('messageContainer') private messageContainer!: ElementRef;
+
   readonly localStorageService = inject(LocalStorageService);
   readonly chatService = inject(ChatService);
 
@@ -25,9 +27,11 @@ export class ChatWindowComponent implements AfterViewInit {
   public readonly isFirstMessage = computed(() => !this.#convoHistory()?.length)
 
   public readonly messages = linkedSignal(() => this.#convoHistory() || []);
+
   ngAfterViewInit(): void {
     this.scrollToBottom();
   }
+
   async handleNewMessage(message: string) {
     this.messages.update((val) => {
       return [...val, {
@@ -47,7 +51,6 @@ export class ChatWindowComponent implements AfterViewInit {
     this.messages.update((val) => [...val, assistantMessage]);
 
     try {
-      console.log('Sending message to chat service:', message);
       const response = await this.chatService.sendMessage(message, this.#convoId);
 
       const updatedMessage: ChatMessageI = {
@@ -55,9 +58,6 @@ export class ChatWindowComponent implements AfterViewInit {
         content: response.response.finalAnswer || 'No response received'
       };
 
-      console.log('Received response from chat service:', updatedMessage.content);
-
-      // Replace the placeholder message
       this.updateMessages(updatedMessage);
     } catch (error) {
       console.error('Error sending message:', error);
@@ -76,6 +76,7 @@ export class ChatWindowComponent implements AfterViewInit {
         : msg
     ));
   }
+
   private scrollToBottom(): void {
     // A small delay to ensure the DOM has updated before scrolling
     setTimeout(() => {
