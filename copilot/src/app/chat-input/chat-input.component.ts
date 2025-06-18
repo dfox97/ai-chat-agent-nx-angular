@@ -1,61 +1,43 @@
-import { Component, signal, computed, output } from '@angular/core';
+import { Component, computed, output, model, ElementRef, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-chat-input',
-  standalone: true,
-  imports: [FormsModule, CommonModule],
   templateUrl: './chat-input.component.html',
   styleUrl: './chat-input.component.scss',
+  standalone: true,
+  imports: [FormsModule, CommonModule],
 })
 export class ChatInputComponent {
-  // Output event for sending messages
-  messageSent = output<string>();
+  public readonly messageInputRef = viewChild<ElementRef<HTMLTextAreaElement>>('messageInput');
+  public messageSent = output<string>();
 
-  // Input state
-  userInput = signal('');
-  isComposing = signal(false);
+  public userInput = model(''); // Updates in template ngmodel.
 
-  // Computed value for checking if input is empty
-  readonly canSubmit = computed(() => this.userInput().trim().length > 0);
+  readonly #trimmedInput = computed(() => this.userInput().trim());
+  public readonly canSubmit = computed(() => this.#trimmedInput().length > 0);
 
   onKeyDown(event: KeyboardEvent) {
-    // Send message on Enter (but not with Shift+Enter)
-    if (event.key === 'Enter' && !event.shiftKey && !this.isComposing()) {
+    if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       this.submit();
     }
   }
 
   submit() {
-    const trimmedInput = this.userInput().trim();
-    if (trimmedInput) {
-      // Emit the message to parent component
-      this.messageSent.emit(trimmedInput);
+    if (!this.#trimmedInput()) return;
 
-      // Clear input after sending
-      this.userInput.set('');
+    this.messageSent.emit(this.#trimmedInput());
 
-      // Reset textarea height
-      this.adjustTextareaHeight(document.querySelector('textarea'));
+    this.userInput.set('');
+
+    if (this.messageInputRef()?.nativeElement) {
+      this.adjustTextareaHeight(this.messageInputRef()?.nativeElement);
     }
   }
 
-  updateInput(value: string) {
-    this.userInput.set(value);
-  }
-
-  // Handle IME composition (for languages like Chinese, Japanese, etc.)
-  onCompositionStart() {
-    this.isComposing.set(true);
-  }
-
-  onCompositionEnd() {
-    this.isComposing.set(false);
-  }
-
-  adjustTextareaHeight(textarea: HTMLTextAreaElement | null) {
+  adjustTextareaHeight(textarea: HTMLTextAreaElement | undefined) {
     if (!textarea) return;
 
     textarea.style.height = 'auto';

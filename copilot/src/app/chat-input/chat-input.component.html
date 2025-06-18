@@ -1,15 +1,12 @@
 <div class="chat-input-container">
   <div class="input-wrapper">
     <textarea
-      [attr.rows]="1"
-      placeholder="Type a message..."
-      [ngModel]="userInput()"
-      (ngModelChange)="updateInput($event)"
-      (keydown)="onKeyDown($event)"
-      (compositionstart)="onCompositionStart()"
-      (compositionend)="onCompositionEnd()"
-      (input)="adjustTextareaHeight(messageInput)"
       #messageInput
+      [rows]="1"
+      placeholder="Type a message..."
+      [(ngModel)]="userInput"
+      (keydown)="onKeyDown($event)"
+      (input)="adjustTextareaHeight(messageInput)"
     ></textarea>
     
     <button 

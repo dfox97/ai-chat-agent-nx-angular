@@ -10,7 +10,6 @@ import { CopilotBackendService } from "../../services/copilot-backend.service";
 export class ChatService {
   private readonly chatAPIService = inject(CopilotBackendService);
 
-
   public loadChatHistory(convoId: string | null): Observable<ChatMessageI[]> {
     if (!convoId) return EMPTY;
     return this.chatAPIService.getConversationHistory(convoId).pipe(
@@ -29,10 +28,6 @@ export class ChatService {
   public sendMessage(message: string, convoId: string | null): Promise<ChatResponse> {
     return firstValueFrom(this.chatAPIService.sendMessage(message, convoId));
   }
-
-
-
-
 }
 
 

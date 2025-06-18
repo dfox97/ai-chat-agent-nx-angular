@@ -24,7 +24,7 @@ export class ChatWindowComponent implements AfterViewInit {
 
   readonly #convoHistory = toSignal(this.chatService.loadChatHistory(this.#convoId));
 
-  public readonly isFirstMessage = computed(() => !this.#convoHistory()?.length)
+  public readonly isFirstMessage = computed(() => !this.messages()?.length)
 
   public readonly messages = linkedSignal(() => this.#convoHistory() || []);
 
