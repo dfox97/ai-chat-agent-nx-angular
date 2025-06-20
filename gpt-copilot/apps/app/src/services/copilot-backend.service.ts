@@ -2,7 +2,7 @@ import { HttpClient } from "@angular/common/http";
 import { inject, Injectable, PLATFORM_ID } from "@angular/core";
 import { Observable, catchError, throwError, map, tap } from "rxjs";
 import { isPlatformBrowser } from "@angular/common";
-import { ChatResponse, ChatRequest, AgentResponse, ChatMessage } from "@copilot/shared-types";
+import { ChatRequest, ChatResponse, AgentResponse, ChatMessage } from "@gpt-copilot/shared";
 import { environment } from "../environment";
 
 @Injectable({

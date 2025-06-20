@@ -4,7 +4,7 @@ import { LocalStorageService } from '../../services/localstorage.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { ChatService } from './chat.service';
-import { ChatMessageI } from '@copilot/shared-types';
+import { ChatMessageI } from '@gpt-copilot/shared';
 
 
 @Component({

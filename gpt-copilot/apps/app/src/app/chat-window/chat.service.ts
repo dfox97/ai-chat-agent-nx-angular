@@ -1,6 +1,6 @@
 import { inject, Injectable } from "@angular/core";
 import { EMPTY, firstValueFrom, map, Observable } from "rxjs";
-import { ChatMessageI, ChatResponse } from "@copilot/shared-types";
+import { ChatMessageI, ChatResponse } from "@gpt-copilot/shared";
 import { CopilotBackendService } from "../../services/copilot-backend.service";
 
 

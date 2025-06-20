@@ -13,6 +13,7 @@
     "@angular/platform-browser-dynamic": "~20.0.0",
     "@angular/router": "~20.0.0",
     "rxjs": "~7.8.0",
+    "typeorm": "^0.3.25",
     "zod": "^3.25.67",
     "zone.js": "~0.15.0"
   },
