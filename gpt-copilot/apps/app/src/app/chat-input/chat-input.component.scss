@@ -1,0 +1,63 @@
+/* chat-input.component.scss */
+
+:host {
+  display: block;
+  border-top: 1px solid #ddd;
+  background: #fff;
+  padding: 1rem;
+}
+
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  textarea {
+    flex: 1;
+    resize: none;
+    padding: 0.75rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    font-size: 0.95rem;
+    transition: border-color 0.2s;
+
+    &:focus {
+      border-color: #3b82f6;
+      outline: none;
+    }
+  }
+
+  .send-button {
+    background-color: #3b82f6;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: background-color 0.2s;
+
+    &:disabled {
+      background-color: #a5b4fc;
+      cursor: not-allowed;
+    }
+
+    &:hover:not(:disabled) {
+      background-color: #2563eb;
+    }
+  }
+}
+
+.input-footer {
+  margin-top: 0.5rem;
+  text-align: center;
+
+  .footer-text {
+    font-size: 0.75rem;
+    color: #888;
+  }
+}

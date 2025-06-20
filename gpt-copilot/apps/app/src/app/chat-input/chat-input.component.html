@@ -1,0 +1,23 @@
+<div class="chat-input-container">
+  <div class="input-wrapper">
+    <textarea
+      #messageInput
+      [rows]="1"
+      placeholder="Type a message..."
+      [(ngModel)]="userInput"
+      (keydown)="onKeyDown($event)"
+      (input)="adjustTextareaHeight(messageInput)"
+    ></textarea>
+    
+    <button 
+      class="send-button"
+      [disabled]="!canSubmit()"
+      (click)="submit()">
+      <i class="fas fa-paper-plane"></i>
+    </button>
+  </div>
+  
+  <div class="input-footer">
+    <span class="footer-text">Press Enter to send, Shift + Enter for new line</span>
+  </div>
+</div>
