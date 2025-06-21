@@ -1,0 +1,23 @@
+.welcome-container {
+  max-width: 500px;
+  margin: 0 auto;
+
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .welcome-message p {
+    font-size: 1rem;
+    margin: 0.5rem 0;
+  }
+
+  .example-prompts ul {
+    list-style: none;
+    padding-left: 0;
+
+    li::before {
+      content: '👉 ';
+    }
+  }
+}

@@ -1,0 +1,32 @@
+<div class="chat-window">
+ <div class="chat-actions">
+    <button (click)="clearConversation()" class="clear-button">Clear Conversation</button>
+  </div>
+  <div class="chat-messages" #messageContainer [class.centered]="isFirstMessage()">
+    @if (isFirstMessage()) {
+      <app-welcome-message/>
+    }
+
+    @for (message of messages(); track message) {
+    <div class="message" [class.user-message]="message.role === 'user'" [class.assistant-message]="message.role === 'assistant'">
+      <div class="message-content">
+        <div class="message-avatar">
+          @if (message.role === 'user') {
+          <i class="fas fa-user"></i>
+          } @else {
+          <i class="fas fa-robot"></i>
+          }
+        </div>
+        <div class="message-text">
+          {{ message.content }}
+        </div>
+      </div>
+      <div class="message-timestamp">
+        {{ message.timestamp | date:'short' }}
+      </div>
+    </div>
+    }
+  </div>
+
+  <app-chat-input (messageSent)="handleNewMessage($event)"></app-chat-input>
+</div>
