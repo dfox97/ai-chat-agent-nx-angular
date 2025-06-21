@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // Generic type for tool parameters and return values
-export interface Tool<TParams = any, TResult = any> {
+export interface Tool<TParams, TResult> {
   name: string;
   description: string;
   paramsSchema: z.ZodType<TParams>;
@@ -17,6 +17,9 @@ const AgentActionSchema = z.object({
     .describe("Tool parameters matching the tool's schema"),
 });
 
+// Type for the action before execution (from LLM response)
+type AgentAction = z.infer<typeof AgentActionSchema>;
+
 // Schema for the complete agent interaction
 export const AgentResponseSchema = z.object({
   thought: z.string().describe('Reasoning about the response or tool usage'),
@@ -29,10 +32,12 @@ export const AgentResponseSchema = z.object({
   finalAnswer: z.string().describe('Complete response to the user'),
 });
 
-type AgentAction = z.infer<typeof AgentActionSchema>;
 export type AgentResponse = z.infer<typeof AgentResponseSchema>;
 
 // Extended action type that includes the tool execution result
-export interface AgentInteraction extends AgentResponse {
-  action: (AgentAction & { result?: unknown }) | null;
+type AgentActionWithResult = AgentAction & { result: unknown };
+
+// Extended agent response type that includes the tool execution result
+export interface AgentInteraction extends Omit<AgentResponse, 'action'> {
+  action: AgentActionWithResult | null;
 }

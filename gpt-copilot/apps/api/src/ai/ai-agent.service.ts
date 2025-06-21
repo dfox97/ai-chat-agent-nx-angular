@@ -9,7 +9,7 @@ import { LLMBase, ApiMessage } from './llms/types/types';
 @Injectable()
 export class AIAgentService {
   private readonly logger = new Logger(AIAgentService.name);
-  private tools: Map<string, Tool<unknown, unknown>> = new Map();
+  private tools: Map<string, Tool<any, any>> = new Map(); // Using 'any' due to current map limitations with generics
   private llmService: LLMBase;
 
   constructor(
@@ -40,11 +40,11 @@ export class AIAgentService {
         return parsedResult;
       },
     };
-    this.tools.set(tool.name, tool as any);
+    this.tools.set(tool.name, tool);
     this.logger.debug(`Tool registered: ${tool.name}`);
   }
 
-  getTools(): Array<Tool<unknown, unknown>> {
+  getTools(): Array<Tool<any, any>> {
     return Array.from(this.tools.values());
   }
 
@@ -61,66 +61,16 @@ export class AIAgentService {
 
     while (iterations < maxIterations) {
       this.logger.debug(`Iteration ${iterations + 1}/${maxIterations}`);
-      const prompt = this.promptService.generatePrompt(
-        this.getTools(),
+      const { response, nextQuery, isComplete } = await this.executeAgentStep(
         currentQuery,
+        query,
       );
-      const responseStr = await this.llmService.sendMessage(prompt);
-      this.logger.debug(`LLM raw response: ${responseStr}`);
-      const response = this.llmParser.parseLLMResponse(responseStr);
 
-      // If there's no action needed, return the final answer
-      if (!response.action) {
-        this.logger.debug(
-          `No action needed. Returning final answer: ${response.finalAnswer}`,
-        );
-        return response as AgentInteraction;
+      if (isComplete || !nextQuery) {
+        return response;
       }
 
-      // If there is an action, execute it
-      this.logger.debug(
-        `Action identified: ${JSON.stringify(response.action)}`,
-      );
-      const tool = this.tools.get(response.action.tool);
-      if (!tool) {
-        this.logger.error(`Tool ${response.action.tool} not found`);
-        throw new Error(`Tool ${response.action.tool} not found`);
-      }
-
-      // Execute tool with proper typing
-      const result = await tool.execute(response.action.params);
-      const validatedResult: unknown = tool.resultSchema.parse(result);
-      this.logger.debug(
-        `Tool "${response.action.tool}" executed. Raw result: ${JSON.stringify(result)}, Validated result: ${JSON.stringify(validatedResult)}`,
-      );
-
-      // Store the result in the response
-      const responseWithResult: AgentInteraction = {
-        ...response,
-        action: {
-          ...response.action,
-          result: validatedResult,
-        },
-      };
-
-      // If this was the last action needed, return the response
-      if (response.finalAnswer && response.finalAnswer !== '') {
-        this.logger.debug(
-          `Final answer found after tool execution: ${response.finalAnswer}`,
-        );
-        return responseWithResult;
-      }
-
-      // Otherwise, update query with tool result for next iteration
-      const resultStr =
-        typeof validatedResult === 'string'
-          ? validatedResult
-          : JSON.stringify(validatedResult);
-
-      currentQuery = `Previous thought: ${response.thought}\nTool used: ${response.action.tool}\nResult: ${resultStr}\nOriginal query: ${query}`;
-      this.logger.debug(
-        `Updating current query for next iteration: ${currentQuery}`,
-      );
+      currentQuery = nextQuery;
       iterations++;
     }
 
@@ -128,5 +78,74 @@ export class AIAgentService {
       `Max iterations (${maxIterations}) reached without final answer for query: "${query}"`,
     );
     throw new Error('Max iterations reached without final answer');
+  }
+
+  private async executeAgentStep(
+    currentQuery: string,
+    originalQuery: string,
+  ): Promise<{
+    response: AgentInteraction;
+    nextQuery: string | null;
+    isComplete: boolean;
+  }> {
+    this.logger.debug(`Generating prompt for query: ${currentQuery}`);
+    const prompt = this.promptService.generatePrompt(
+      this.getTools(),
+      currentQuery,
+    );
+    const responseStr = await this.llmService.sendMessage(prompt);
+    this.logger.debug(`LLM raw response: ${responseStr}`);
+    const response = this.llmParser.parseLLMResponse(responseStr);
+
+    if (!response.action) {
+      this.logger.debug(
+        `No action needed. Returning final answer: ${response.finalAnswer}`,
+      );
+      return {
+        response: { ...response, action: null } satisfies AgentInteraction,
+        nextQuery: null,
+        isComplete: true,
+      };
+    }
+
+    this.logger.debug(
+      `Action identified: ${JSON.stringify(response.action)}`,
+    );
+    const tool = this.tools.get(response.action.tool);
+    if (!tool) {
+      this.logger.error(`Tool ${response.action.tool} not found`);
+      throw new Error(`Tool ${response.action.tool} not found`);
+    }
+
+    const result = await tool.execute(response.action.params);
+    const validatedResult: unknown = tool.resultSchema.parse(result);
+    this.logger.debug(
+      `Tool "${response.action.tool}" executed. Raw result: ${JSON.stringify(result)}, Validated result: ${JSON.stringify(validatedResult)}`,
+    );
+
+    const responseWithResult: AgentInteraction = {
+      ...response,
+      action: {
+        ...response.action,
+        result: validatedResult,
+      },
+    };
+
+    if (response.finalAnswer && response.finalAnswer !== '') {
+      this.logger.debug(
+        `Final answer found after tool execution: ${response.finalAnswer}`,
+      );
+      return { response: responseWithResult, nextQuery: null, isComplete: true };
+    }
+
+    const resultStr =
+      typeof validatedResult === 'string'
+        ? validatedResult
+        : JSON.stringify(validatedResult);
+
+    const nextQuery = `Previous thought: ${response.thought}\nTool used: ${response.action.tool}\nResult: ${resultStr}\nOriginal query: ${originalQuery}`;
+    this.logger.debug(`Updating current query for next iteration: ${nextQuery}`);
+
+    return { response: responseWithResult, nextQuery, isComplete: false };
   }
 }

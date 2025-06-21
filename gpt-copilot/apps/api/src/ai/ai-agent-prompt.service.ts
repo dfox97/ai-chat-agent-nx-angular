@@ -11,7 +11,7 @@ export class AgentPromptService {
    * @returns The complete prompt string for the LLM.
    */
   generatePrompt(
-    tools: Array<Tool<unknown, unknown>>,
+    tools: Array<Tool<any, any>>,
     userQuery: string,
   ): string {
     const toolDescriptions = tools

@@ -28,59 +28,17 @@ export class LLMResponseParser {
     });
   }
 
+  /**
+    * Parses and validates the LLM's raw string response into a structured AgentResponse.
+    * It attempts to extract JSON, parse it, and recover from certain common parsing errors.
+    */
   parseLLMResponse(llmResponse: string): AgentResponse {
-    const jsonStartIndex = llmResponse.indexOf('{');
-    const jsonEndIndex = llmResponse.lastIndexOf('}');
+    const extractedJsonString = this.extractJsonString(llmResponse);
 
-    if (
-      jsonStartIndex !== -1 &&
-      jsonEndIndex !== -1 &&
-      jsonEndIndex > jsonStartIndex
-    ) {
-      let jsonString = llmResponse.substring(jsonStartIndex, jsonEndIndex + 1);
-      this.logger.debug(`Extracted JSON string: ${jsonString}`);
-
+    if (extractedJsonString) {
+      this.logger.debug(`Extracted JSON string: ${extractedJsonString}`);
       try {
-        // Attempt to parse directly, if it fails, try to repair
-        let parsed: unknown;
-        try {
-          parsed = JSON.parse(jsonString);
-        } catch (initialError) {
-          if (
-            initialError instanceof SyntaxError &&
-            initialError.message.includes('Bad control character')
-          ) {
-            this.logger.warn(
-              'Initial JSON parse failed due to bad control character. Attempting to repair by escaping string values.',
-            );
-
-            // A very basic and potentially unsafe repair: Re-JSON stringify to get proper escaping
-            // This assumes the structure is mostly correct but strings are not escaped.
-            // A more robust solution might involve a custom parser or stricter LLM output
-            // For now, let's try to stringify and re-parse common culprits like finalAnswer
-            const finalAnswerMatch = jsonString.match(
-              /"finalAnswer"\s*:\s*"(.*?)(?<!\\)"/s,
-            );
-            if (finalAnswerMatch && finalAnswerMatch[1]) {
-              const rawFinalAnswer = finalAnswerMatch[1];
-              const escapedFinalAnswer = this.escapeJsonString(rawFinalAnswer);
-              // Simple regex replace, assuming no other "finalAnswer" strings in the JSON
-              jsonString = jsonString.replace(
-                rawFinalAnswer,
-                escapedFinalAnswer,
-              );
-              this.logger.debug(
-                `Repaired JSON string (finalAnswer): ${jsonString}`,
-              );
-            }
-
-            // Attempt parsing again after a basic repair
-            parsed = JSON.parse(jsonString);
-          } else {
-            throw initialError; // Re-throw other syntax errors
-          }
-        }
-
+        const parsed = this.parseJsonWithRepair(extractedJsonString);
         this.logger.debug(
           `Attempting to validate parsed response: ${JSON.stringify(parsed)}`,
         );
@@ -91,39 +49,103 @@ export class LLMResponseParser {
         );
         return validatedResponse;
       } catch (error) {
-        if (error instanceof z.ZodError) {
-          this.logger.error(
-            `Validation error for extracted JSON: ${error.errors.map((e) => e.message).join(', ')}`,
-            error,
-          );
-        } else if (error instanceof SyntaxError) {
-          this.logger.error(
-            `JSON parsing syntax error: ${error.message}`,
-            error,
-          );
-        } else {
-          this.logger.error(
-            `Unknown error during JSON parsing or validation: ${error}`,
-            error,
+        return this.handleParsingError(error, llmResponse);
+      }
+    }
+
+
+    this.logger.debug(
+      'No valid JSON object found in the response. Treating as direct response.',
+    );
+    return this.defaultResponse(llmResponse);
+
+  }
+
+
+  /**
+   * Extracts a potential JSON string from a larger LLM response string.
+   * @returns The extracted JSON string or null if not found.
+   */
+  private extractJsonString(llmResponse: string): string | null {
+    const jsonStartIndex = llmResponse.indexOf('{');
+    const jsonEndIndex = llmResponse.lastIndexOf('}');
+
+    if (
+      jsonStartIndex !== -1 &&
+      jsonEndIndex !== -1 &&
+      jsonEndIndex > jsonStartIndex
+    ) {
+      return llmResponse.substring(jsonStartIndex, jsonEndIndex + 1);
+    }
+    return null;
+  }
+
+  /**
+   * Attempts to parse a JSON string, with a basic repair mechanism for bad control characters.
+   */
+  private parseJsonWithRepair(jsonString: string): unknown {
+    try {
+      return JSON.parse(jsonString);
+    } catch (initialError) {
+      if (
+        initialError instanceof SyntaxError &&
+        initialError.message.includes('Bad control character')
+      ) {
+        this.logger.warn(
+          'Initial JSON parse failed due to bad control character. Attempting to repair.',
+        );
+
+        // A very basic and potentially unsafe repair: Re-JSON stringify to get proper escaping
+        const finalAnswerMatch = jsonString.match(
+          /"finalAnswer"\s*:\s*"(.*?)(?<!\\)"/s,
+        );
+        if (finalAnswerMatch && finalAnswerMatch[1]) {
+          const rawFinalAnswer = finalAnswerMatch[1];
+          const escapedFinalAnswer = this.escapeJsonString(rawFinalAnswer);
+          jsonString = jsonString.replace(rawFinalAnswer, escapedFinalAnswer);
+          this.logger.debug(
+            `Repaired JSON string (finalAnswer): ${jsonString}`,
           );
         }
-        // Fallback if parsing/validation fails for extracted JSON
-        return {
-          thought: 'Direct response (JSON extraction or validation failed)',
-          action: null,
-          finalAnswer: llmResponse.trim(),
-        };
+
+        return JSON.parse(jsonString); // Attempt parsing again after repair
+      } else {
+        throw initialError; // Re-throw other syntax errors
       }
-    } else {
-      this.logger.debug(
-        'No valid JSON object found in the response. Treating as direct response.',
-      );
-      // If no JSON object is found, treat the entire response as a direct response
-      return {
-        thought: 'Direct response',
-        action: null,
-        finalAnswer: llmResponse.trim(),
-      };
     }
+  }
+
+  /**
+   * Centralized error logging and fallback response creation for parsing failures.
+   */
+  private handleParsingError(error: unknown, response: string): AgentResponse {
+    if (error instanceof z.ZodError) {
+      this.logger.error(
+        `Validation error for extracted JSON: ${error.errors
+          .map((e) => e.message)
+          .join(', ')}`,
+        error,
+      );
+    } else if (error instanceof SyntaxError) {
+      this.logger.error(
+        `JSON parsing syntax error after repair attempt: ${error.message}`,
+        error,
+      );
+    } else {
+      this.logger.error(
+        `Unknown error during JSON parsing or validation: ${error instanceof Error ? error.message : String(error)}`,
+        error,
+      );
+    }
+    // Fallback if parsing/validation fails for extracted JSON
+    return this.defaultResponse(response)
+  }
+
+  private defaultResponse(finalAnswer: string): AgentResponse {
+    return {
+      thought: 'Direct response',
+      action: null,
+      finalAnswer: finalAnswer.trim(),
+    };
   }
 }
